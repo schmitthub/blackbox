@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   # A workflow runs once per layer of a stack, so the heavy jobs (lint, unit
-  # tests, osv-scanner) run only on the two layers GitHub's guide
+  # tests) run only on the two layers GitHub's guide
   # names. The top layer (position == size) holds the full set of changes.
   # The lowest unmerged layer (stack base == pull request base) is the next
   # to land; when it merges, GitHub rebases the next layer onto the base,
@@ -155,54 +155,6 @@ jobs:
         with:
           sarif_file: gitleaks.sarif
           category: gitleaks
-
-  osv-scanner:
-    name: osv-scanner SCA
-    needs: stack
-    if: ${{ !cancelled() && needs.stack.outputs.heavy != 'false' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # Call analysis compiles the module.
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-
-      # Keep the version in lockstep with the osv-scanner rev in prek.toml.
-      - name: Install osv-scanner
-        run: |
-          set -euo pipefail
-          OSV_VERSION=v2.7.0
-          OSV_FILE=osv-scanner_linux_amd64
-          OSV_SHA=160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
-          curl -sSfL "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/${OSV_FILE}" -o "${OSV_FILE}"
-          echo "${OSV_SHA}  ${OSV_FILE}" | sha256sum --check
-          sudo install -m 755 "${OSV_FILE}" /usr/local/bin/osv-scanner
-          rm -f "${OSV_FILE}"
-
-      # Fails on a known vulnerability in called code or on a dependency
-      # license outside the allowlist. Keep the arguments in lockstep with
-      # the osv-scanner hook in prek.toml.
-      - name: Run osv-scanner
-        run: >-
-          osv-scanner scan source
-          --lockfile=go.mod
-          --call-analysis=go
-          --licenses=MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0
-          --format=sarif
-          --output=osv.sarif
-
-      - name: Upload osv-scanner SARIF
-        if: always() && hashFiles('osv.sarif') != ''
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        with:
-          sarif_file: osv.sarif
-          category: osv-scanner
 
   dependency-review:
     name: Dependency Review
