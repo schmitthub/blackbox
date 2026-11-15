@@ -1,0 +1,8 @@
+# local extras for testing and debugging; loaded automatically by `docker compose` run from deploy/
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+  api:
+    ports:
+      - "127.0.0.1:8080:8080"
