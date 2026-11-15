@@ -8,8 +8,6 @@ on:
     branches: [main]
   push:
     branches: [main]
-  schedule:
-    - cron: "23 4 * * 1"
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -31,8 +29,8 @@ jobs:
   # together with every layer below it, and the layer being merged is either
   # the top or was tested in full when it became the lowest.
   #
-  # Dependents test `!= 'false'`, so an empty output (push, schedule, or this
-  # job failing) runs everything.
+  # Dependents test `!= 'false'`, so an empty output (push, or this job
+  # failing) runs everything.
   stack:
     name: Stack gate
     if: github.event_name == 'pull_request'
