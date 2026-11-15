@@ -92,6 +92,22 @@ jobs:
 
       - run: make test
 
+  # The agent-file layout check the agent-compat commit hook runs, plus the
+  # checker's own tests. Needs python3 >= 3.11 (tomllib); ubuntu-24.04 has 3.12.
+  agent-compat:
+    name: Agent compatibility
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Agent compatibility
+        run: python3 scripts/check-agent-compatibility.py
+
+      - name: Checker tests
+        run: python3 scripts/test_agent_compatibility.py
+
   semgrep:
     name: Semgrep SAST
     if: github.event_name == 'pull_request'
