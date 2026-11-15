@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   # A workflow runs once per layer of a stack, so the heavy jobs (lint, unit
-  # tests, osv-scanner, CodeQL Go) run only on the two layers GitHub's guide
+  # tests, osv-scanner) run only on the two layers GitHub's guide
   # names. The top layer (position == size) holds the full set of changes.
   # The lowest unmerged layer (stack base == pull request base) is the next
   # to land; when it merges, GitHub rebases the next layer onto the base,
@@ -220,12 +220,10 @@ jobs:
         with:
           config-file: ./.github/dependency-review-config.yml
 
-  # Gated on the steps, not the job: `matrix` is not available in a job `if`.
-  # On a skipped stack layer the Go entry checks out and reports success.
+  # Not gated on stacked pull requests: a ruleset that requires code scanning
+  # results needs a CodeQL upload for every language on every layer.
   codeql:
     name: Analyze (${{ matrix.language }})
-    needs: stack
-    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -240,20 +238,16 @@ jobs:
             build-mode: autobuild
           - language: actions
             build-mode: none
-    env:
-      RUN: ${{ matrix.language != 'go' || needs.stack.outputs.heavy != 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialize CodeQL
-        if: env.RUN == 'true'
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
       - name: Perform CodeQL analysis
-        if: env.RUN == 'true'
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: /language:${{ matrix.language }}
