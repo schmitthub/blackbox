@@ -1,9 +1,11 @@
 name: CI
 
-# No `branches` filter on pull_request: the upper layers of a stacked pull
-# request target the layer below, not main, and must still be scanned.
+# Stacked pull requests: GitHub triggers workflows as if every layer targets
+# the base of the stack, so `branches: [main]` runs this on every layer.
+# https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/optimizing-ci-for-stacked-pull-requests
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
   schedule:
@@ -17,11 +19,18 @@ permissions:
   contents: read
 
 jobs:
-  # Stacked pull requests: the heavy jobs (lint, unit tests, osv-scanner, CodeQL Go) run on two
-  # layers and are skipped on the rest. The top layer: merging it lands every
-  # lower layer, so it is scanned with all of them. The lowest unmerged layer
-  # (its base is the stack base): it is the next one to land on main. Cheap
-  # jobs run on every layer. A pull request outside a stack is always heavy.
+  # A workflow runs once per layer of a stack, so the heavy jobs (lint, unit
+  # tests, osv-scanner, CodeQL Go) run only on the two layers GitHub's guide
+  # names. The top layer (position == size) holds the full set of changes.
+  # The lowest unmerged layer (stack base == pull request base) is the next
+  # to land; when it merges, GitHub rebases the next layer onto the base,
+  # which re-triggers CI with that layer now the lowest. Cheap jobs run on
+  # every layer. `stack` is null outside a stack: everything runs.
+  #
+  # A skipped job counts as a passing required check. A layer can only merge
+  # together with every layer below it, and the layer being merged is either
+  # the top or was tested in full when it became the lowest.
+  #
   # Dependents test `!= 'false'`, so an empty output (push, schedule, or this
   # job failing) runs everything.
   stack:
