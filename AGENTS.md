@@ -13,6 +13,8 @@ Claude Code and Codex use the same project instructions and skills.
 - Shared command guards live in `.agents/hooks/`. Both `.claude/settings.json` and `.codex/config.toml` register them. The Codex hooks use inline TOML; do not add `.codex/hooks.json`, or each guard registers twice.
 - Symbolic links under `.agents/`, `.claude/` and `.codex/` are relative and stay inside the repository.
 
+Copilot code review reads `.github/copilot-instructions.md` and the procedure in `.github/skills/code-review/SKILL.md`. Both point at the rules in this file; add a rule here, not there.
+
 The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts/check-agent-compatibility.py`, which enforces the layout above. CI also runs its tests, `scripts/test_agent_compatibility.py`.
 
 ## Layout
@@ -31,8 +33,23 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - `make check`: every commit hook on all files.
 - `make up`, `make down`, `make reset`: the Compose stack. `make reset` deletes the database volume.
 
+## Data rules
+
+- Identity comes from Auth0. The API validates the Auth0 token and maps its subject to a row in `users`. Write no token, password, session or API key check here. Only `/healthz` is public.
+- Every row in `inputs`, `outputs` and `events` belongs to one user. Every query restricts rows to the `user_id` of the validated token, never to one taken from the request.
+- Queries use placeholders. Never build SQL from request data.
+- `events` is append-only. No `UPDATE` or `DELETE` on it.
+- All times are stored in UTC, in `timestamptz` columns.
+- Inputs and outputs relate only through events and time. Nothing stores that an input causes an output.
+- A new attribute starts in `attrs` (jsonb). It earns a column, through a migration, when it is queried on regularly.
+- A schema change is a new goose migration with `Up` and `Down`. Never edit a migration that is on `main`.
+
 ## Rules
 
+- Do not add a lint suppression (`//nolint`, `#nosec`, `//lint:ignore`, `# nosemgrep`, or an exclusion in `.golangci.yml`) without explicit maintainer approval. Correct the code so the linter passes.
+- No `panic`. No `log.Fatal` or `os.Exit` outside `cmd/api/main.go`. Return the error up the call stack.
+- Only `internal/config` reads the environment. Only `internal/server` starts an HTTP server.
+- GitHub Actions are pinned to a full commit SHA; commit hooks and scanners to an exact version.
 - Every commit goes through the prek hooks. The `git-checks` guard blocks `--no-verify` and the other ways around them.
 - Commits must be signed. `main` only takes squash merges from pull requests.
-- CI workflow and scanner versions are pinned; keep the versions in `prek.toml` and `.github/workflows/ci.yml` in step.
+- Keep scanner versions in `prek.toml` and `.github/workflows/ci.yml` in step.
