@@ -65,6 +65,8 @@ repo = "local"
 [[repos.hooks]]
 id = "semgrep"
 name = "Semgrep SAST"
+# Expected version: 1.185.0 (must match the CI image tag in ci.yml).
+# --error is required: without it Semgrep exits 0 even with findings.
 entry = "semgrep scan --config p/golang --config p/security-audit --error"
 language = "system"
 types = ["go"]

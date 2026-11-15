@@ -17,8 +17,8 @@ rules:
       `# nosemgrep: blackbox-pull-request-target-cache` on the `uses:` line.
     paths:
       include:
-        - ".github/workflows/*.yml"
-        - ".github/workflows/*.yaml"
+        - "/.github/workflows/*.yml"
+        - "/.github/workflows/*.yaml"
     patterns:
       - pattern-inside: |
           on:
