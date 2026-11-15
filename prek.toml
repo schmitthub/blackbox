@@ -72,9 +72,22 @@ pass_filenames = false
 priority = "scan"
 
 [[repos.hooks]]
+id = "semgrep-actions"
+name = "Semgrep GitHub Actions"
+# Scans workflow YAML: p/github-actions catches the pull_request_target
+# checkout (pwn-request); .semgrep/ adds the pull_request_target cache
+# (poisoning) rule. Separate hook so workflow edits are gated even when
+# no Go file changes.
+entry = "semgrep scan --config p/github-actions --config .semgrep/ --error"
+language = "system"
+files = '^\.github/workflows/.*\.ya?ml$'
+pass_filenames = false
+priority = "scan"
+
+[[repos.hooks]]
 id = "go-test"
 name = "Unit tests"
-entry = "go test ./..."
+entry = "make test"
 language = "system"
 types = ["go"]
 pass_filenames = false
