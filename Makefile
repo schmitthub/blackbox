@@ -1,7 +1,7 @@
 COMPOSE := docker compose -f deploy/compose.yaml -f deploy/compose.override.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help build test lint check image up down reset logs ps
+.PHONY: help build test mocks lint check image up down reset logs ps
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
@@ -11,6 +11,9 @@ build: ## Build the API binary to bin/api
 
 test: ## Run unit tests
 	go test ./...
+
+mocks: ## Regenerate mocks from .mockery.yml
+	mockery
 
 lint: ## Run golangci-lint
 	golangci-lint run --config .golangci.yml

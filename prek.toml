@@ -87,6 +87,17 @@ pass_filenames = false
 priority = "scan"
 
 [[repos.hooks]]
+id = "mockery"
+name = "Mocks up to date"
+# Expected version: 3.9.1 (mise.toml; must match the CI step in ci.yml).
+# Regenerates the mocks; prek fails the commit when a file changes.
+entry = "make mocks"
+language = "system"
+types = ["go"]
+pass_filenames = false
+priority = "fix"
+
+[[repos.hooks]]
 id = "go-test"
 name = "Unit tests"
 entry = "make test"

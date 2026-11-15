@@ -30,6 +30,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 
 - `make help` lists every target.
 - `make test`, `make lint`: unit tests and golangci-lint.
+- `make mocks`: regenerate the mocks listed in `.mockery.yml`. Add an interface there; never edit or hand-write a mock.
 - `make check`: every commit hook on all files.
 - `make up`, `make down`, `make reset`: the Compose stack. `make reset` deletes the database volume.
 

@@ -1,7 +1,6 @@
 package api_test
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -9,12 +8,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/schmitthub/blackbox/internal/api"
+	"github.com/schmitthub/blackbox/internal/api/mocks"
 )
-
-type pinger struct{ err error }
-
-func (p pinger) Ping(context.Context) error { return p.err }
 
 func TestHealth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -34,7 +32,10 @@ func TestHealth(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil)
 
-			api.NewRouter(pinger{err: tt.err}).ServeHTTP(rec, req)
+			db := mocks.NewMockPinger(t)
+			db.EXPECT().Ping(mock.Anything).Return(tt.err)
+
+			api.NewRouter(db).ServeHTTP(rec, req)
 
 			if rec.Code != tt.wantCode {
 				t.Errorf("status = %d, want %d", rec.Code, tt.wantCode)
