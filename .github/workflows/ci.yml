@@ -29,8 +29,7 @@ jobs:
   # together with every layer below it, and the layer being merged is either
   # the top or was tested in full when it became the lowest.
   #
-  # Dependents test `!= 'false'`, so an empty output (push, or this job
-  # failing) runs everything.
+  # Dependents test `!= 'false'`, so an empty output (this job failing) runs everything.
   stack:
     name: Stack gate
     if: github.event_name == 'pull_request'
@@ -50,8 +49,9 @@ jobs:
             'if $s == null or $s.position == $s.size or $s.base.ref == $base then "heavy=true" else "heavy=false" end' \
             | tee -a "$GITHUB_OUTPUT"
 
-  # Pull requests only: golangci-lint reports issues new since the merge base
-  # with main (new-from-merge-base in .golangci.yml).
+  # Lint and unit tests run on pull requests only; a push to main is a merge
+  # of code they already passed on. golangci-lint reports issues new since
+  # the merge base with main (new-from-merge-base in .golangci.yml).
   lint:
     name: golangci-lint
     needs: stack
@@ -79,7 +79,7 @@ jobs:
   test:
     name: Unit Tests
     needs: stack
-    if: ${{ !cancelled() && needs.stack.outputs.heavy != 'false' }}
+    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
