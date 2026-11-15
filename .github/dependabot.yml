@@ -1,10 +1,12 @@
+# Version updates run monthly. Security updates are separate: Dependabot opens
+# them as soon as an advisory is published, whatever this schedule says.
 version: 2
 
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       go-minor-patch:
         update-types: [minor, patch]
@@ -12,7 +14,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       actions:
         patterns: ["*"]
@@ -20,9 +22,9 @@ updates:
   - package-ecosystem: docker
     directory: /deploy/api
     schedule:
-      interval: weekly
+      interval: monthly
 
   - package-ecosystem: docker-compose
     directory: /deploy
     schedule:
-      interval: weekly
+      interval: monthly
