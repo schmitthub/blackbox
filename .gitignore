@@ -34,3 +34,10 @@ go.work.sum
 
 # Build output
 bin/
+
+# Local agent settings and worktrees
+.claude/settings.local.json
+.claude/worktrees/
+
+# Python bytecode from the agent-file checks
+__pycache__/

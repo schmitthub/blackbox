@@ -94,3 +94,12 @@ language = "system"
 types = ["go"]
 pass_filenames = false
 priority = "build"
+
+[[repos.hooks]]
+id = "agent-compat"
+name = "Agent compatibility"
+entry = "python3 scripts/check-agent-compatibility.py"
+language = "system"
+always_run = true
+pass_filenames = false
+priority = "scan"
