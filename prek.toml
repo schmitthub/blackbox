@@ -1,0 +1,81 @@
+# prek hooks, same setup as schmitthub/clawker minus its project-specific hooks.
+# Install: prek install
+# Run all: prek run --all-files
+#
+# Scheduling: lower priority runs first; hooks sharing a priority run
+# concurrently. go-mod-tidy mutates go.mod/go.sum, so it runs alone in the
+# "fix" tier before every scan that reads module state.
+
+[priorities]
+fix = 0
+build = 7
+scan = 10
+
+# ── Security ──────────────────────────────────────────────────────────────
+
+[[repos]]
+repo = "https://github.com/gitleaks/gitleaks"
+rev = "83d9cd684c87d95d656c1458ef04895a7f1cbd8e" # frozen: v8.30.1
+
+[[repos.hooks]]
+id = "gitleaks"
+priority = "scan"
+
+# Vulnerability (Go call analysis) and license allowlist gate.
+[[repos]]
+repo = "https://github.com/google/osv-scanner"
+rev = "bfe2f84abd2f09fe0b83ba7f6dad40d296762f40" # frozen: v2.7.0
+
+[[repos.hooks]]
+id = "osv-scanner"
+# prek builds the hook; use the installed Go toolchain, never a download.
+language_version = "system"
+args = ["scan", "source", "--lockfile=go.mod", "--call-analysis=go", "--licenses=MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0"]
+priority = "scan"
+
+# ── Tidy (mutates go.mod/go.sum — must precede the scan tier) ─────────────
+
+[[repos]]
+repo = "https://github.com/tekwizely/pre-commit-golang"
+rev = "f298c082154b2cb239fac06a4f452368e66e66dd" # frozen: v1.0.0-rc.4
+
+[[repos.hooks]]
+id = "go-mod-tidy"
+priority = "fix"
+
+# ── Lint ──────────────────────────────────────────────────────────────────
+
+[[repos]]
+repo = "https://github.com/golangci/golangci-lint"
+rev = "25c5369a93aacb8cccea0d46e1569ca4a194564d" # frozen: v2.15.0
+
+[[repos.hooks]]
+id = "golangci-lint-full"
+# Use the installed linter and Go toolchain.
+language = "system"
+entry = "golangci-lint run"
+args = ["--config", ".golangci.yml"]
+priority = "scan"
+
+# ── Local ─────────────────────────────────────────────────────────────────
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "semgrep"
+name = "Semgrep SAST"
+entry = "semgrep scan --config p/golang --config p/security-audit --error"
+language = "system"
+types = ["go"]
+pass_filenames = false
+priority = "scan"
+
+[[repos.hooks]]
+id = "go-test"
+name = "Unit tests"
+entry = "go test ./..."
+language = "system"
+types = ["go"]
+pass_filenames = false
+priority = "build"
