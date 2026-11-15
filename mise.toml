@@ -1,3 +1,4 @@
 [tools]
+"aqua:auth0/auth0-cli" = "1.39.0"
 go = "1.27.4"
 mockery = "3.9.1"
