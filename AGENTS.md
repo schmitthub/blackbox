@@ -13,7 +13,7 @@ Claude Code and Codex use the same project instructions and skills.
 - Shared command guards live in `.agents/hooks/`. Both `.claude/settings.json` and `.codex/config.toml` register them. The Codex hooks use inline TOML; do not add `.codex/hooks.json`, or each guard registers twice.
 - Symbolic links under `.agents/`, `.claude/` and `.codex/` are relative and stay inside the repository.
 
-Copilot code review reads `.github/copilot-instructions.md` and the procedure in `.github/skills/code-review/SKILL.md`. Both point at the rules in this file; add a rule here, not there.
+Copilot code review reads `.github/copilot-instructions.md`. It points at the rules in this file; add a rule here, not there.
 
 The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts/check-agent-compatibility.py`, which enforces the layout above. CI also runs its tests, `scripts/test_agent_compatibility.py`.
 
@@ -46,7 +46,6 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 
 ## Rules
 
-- Do not add a lint suppression (`//nolint`, `#nosec`, `//lint:ignore`, `# nosemgrep`, or an exclusion in `.golangci.yml`) without explicit maintainer approval. Correct the code so the linter passes.
 - No `panic`. No `log.Fatal` or `os.Exit` outside `cmd/api/main.go`. Return the error up the call stack.
 - Only `internal/config` reads the environment. Only `internal/server` starts an HTTP server.
 - GitHub Actions are pinned to a full commit SHA; commit hooks and scanners to an exact version.
