@@ -1,39 +1,49 @@
+// Command api serves the Blackbox HTTP API.
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
-	"log"
-	"net/http"
+	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/gin-gonic/gin"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/schmitthub/blackbox/internal/api"
+	"github.com/schmitthub/blackbox/internal/config"
+	"github.com/schmitthub/blackbox/internal/server"
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	if err := run(logger); err != nil {
+		logger.Error("api stopped", "error", err)
+		os.Exit(1)
 	}
 }
 
-func run() error {
-	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+func run(logger *slog.Logger) error {
+	cfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("open database: %w", err)
+		return fmt.Errorf("load config: %w", err)
 	}
-	defer db.Close()
 
-	r := gin.Default()
-	r.GET("/healthz", func(c *gin.Context) {
-		if pingErr := db.PingContext(c.Request.Context()); pingErr != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "db unavailable"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
-	if err = r.Run(":8080"); err != nil {
-		return fmt.Errorf("serve: %w", err)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// The pool connects lazily; /healthz reports whether the database answers.
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("create database pool: %w", err)
 	}
+	defer pool.Close()
+
+	if err = server.Run(ctx, cfg.Addr, api.NewRouter(pool), logger); err != nil {
+		return fmt.Errorf("run server: %w", err)
+	}
+
 	return nil
 }
