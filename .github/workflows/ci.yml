@@ -49,8 +49,9 @@ jobs:
             'if $s == null or $s.position == $s.size or $s.base.ref == $base then "heavy=true" else "heavy=false" end' \
             | tee -a "$GITHUB_OUTPUT"
 
-  # Lint and unit tests run on pull requests only; a push to main is a merge
-  # of code they already passed on. golangci-lint reports issues new since
+  # Everything except CodeQL runs on pull requests only; a push to main is a
+  # merge of code that already passed. CodeQL also runs on main: pull request
+  # scans compare against that analysis. golangci-lint reports issues new since
   # the merge base with main (new-from-merge-base in .golangci.yml).
   lint:
     name: golangci-lint
@@ -91,7 +92,6 @@ jobs:
 
       - run: make test
 
-  # Pull requests only, like lint and unit tests.
   semgrep:
     name: Semgrep SAST
     if: github.event_name == 'pull_request'
@@ -124,6 +124,7 @@ jobs:
 
   gitleaks:
     name: Gitleaks Secrets
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
