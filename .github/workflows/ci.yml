@@ -1,4 +1,4 @@
-name: Security
+name: CI
 
 # No `branches` filter on pull_request: the upper layers of a stacked pull
 # request target the layer below, not main, and must still be scanned.
@@ -10,14 +10,14 @@ on:
     - cron: "23 4 * * 1"
 
 concurrency:
-  group: security-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
 jobs:
-  # Stacked pull requests: the heavy jobs (osv-scanner, CodeQL Go) run on two
+  # Stacked pull requests: the heavy jobs (lint, unit tests, osv-scanner, CodeQL Go) run on two
   # layers and are skipped on the rest. The top layer: merging it lands every
   # lower layer, so it is scanned with all of them. The lowest unmerged layer
   # (its base is the stack base): it is the next one to land on main. Cheap
@@ -42,6 +42,47 @@ jobs:
           jq -nr --argjson s "$STACK" --arg base "$BASE" \
             'if $s == null or $s.position == $s.size or $s.base.ref == $base then "heavy=true" else "heavy=false" end' \
             | tee -a "$GITHUB_OUTPUT"
+
+  # Pull requests only: golangci-lint reports issues new since the merge base
+  # with main (new-from-merge-base in .golangci.yml).
+  lint:
+    name: golangci-lint
+    needs: stack
+    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The checkout is a detached HEAD; the merge base needs a local main.
+      - name: Fetch main for new-from-merge-base
+        run: git fetch --no-tags origin main:main
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # Keep the version in lockstep with the golangci-lint rev in prek.toml.
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+
+  test:
+    name: Unit Tests
+    needs: stack
+    if: ${{ !cancelled() && needs.stack.outputs.heavy != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - run: make test
 
   semgrep:
     name: Semgrep SAST
