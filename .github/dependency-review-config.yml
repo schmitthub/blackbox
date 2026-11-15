@@ -11,5 +11,7 @@ allow-licenses:
   - BSD-3-Clause
   - ISC
   - MPL-2.0
+  # Go's patent grant, attached to BSD-3-Clause on golang.org/x and protobuf.
+  - LicenseRef-scancode-google-patent-license-golang
 
 comment-summary-in-pr: on-failure
