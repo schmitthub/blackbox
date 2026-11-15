@@ -1,0 +1,43 @@
+name: blackbox
+
+services:
+  postgres:
+    image: postgres:18.7@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc
+    environment:
+      POSTGRES_USER: blackbox
+      POSTGRES_DB: blackbox
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in deploy/.env}
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blackbox -d blackbox"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    image: ghcr.io/pressly/goose:v3.30.1@sha256:43daef7c47f1ac9b48caa81edc92909964ce0dfb4fcf428a9dee5462cd86affe
+    command: ["up"]
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://blackbox:${POSTGRES_PASSWORD}@postgres:5432/blackbox?sslmode=disable
+      GOOSE_MIGRATION_DIR: /migrations
+    volumes:
+      - ../migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://blackbox:${POSTGRES_PASSWORD}@postgres:5432/blackbox?sslmode=disable
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
