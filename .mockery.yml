@@ -1,0 +1,11 @@
+# mockery v3. Regenerate with `make mocks`.
+all: false
+template: testify
+dir: '{{.InterfaceDir}}/mocks'
+pkgname: mocks
+filename: mocks.go
+structname: 'Mock{{.InterfaceName}}'
+packages:
+  github.com/schmitthub/blackbox/internal/api:
+    interfaces:
+      Pinger:
