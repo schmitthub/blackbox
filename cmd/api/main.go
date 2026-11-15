@@ -26,7 +26,7 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	cfg, err := config.Load(os.Getenv)
+	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
