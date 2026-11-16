@@ -31,7 +31,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - `make help` lists every target.
 - `scripts/setup.sh [--env] [--auth0]`: sets up a checkout. Run every script from the repository root; scripts use paths relative to it. Setup details: no flag runs every part. A new part is a flag there, is safe to run again, and takes its settings from `.env`. A new setting gets a line in `.env.example`.
 - `make test`, `make lint`: unit tests and golangci-lint.
-- `make test-int`: integration tests, in containers against a migrated database.
+- `make test-int`: integration tests. Each starts an embedded PostgreSQL of its own; no container is needed.
 - `make mocks`: regenerate the mocks listed in `.mockery.yml`. Add an interface there; never edit or hand-write a mock.
 - `make check`: every commit hook on all files.
 - `make up`, `make down`, `make reset`: the Compose stack. `make reset` deletes the database volume.
@@ -51,7 +51,9 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 
 - Do not add a lint suppression (`//nolint`, `#nosec`, `//lint:ignore`, `nosemgrep`, or an exclusion in `.golangci.yml`) without explicit maintainer approval. Correct the code so the linter passes.
 - A unit test replaces a dependency only with a mockery mock (`make mocks`). Never hand-write a fake, stub or spy.
-- A test that needs a real service is an integration test: it carries `//go:build integration` and runs in containers with `make test-int`. `make test` needs no service and no network.
+- A test that needs a database is an integration test: it carries `//go:build integration`, starts an embedded PostgreSQL, and runs with `make test-int`. `make test` needs no service and no network.
+- End-to-end tests run against the Compose stack in containers. Integration tests never use containers.
+- Every migration is covered by `migrations/migrations_integration_test.go`: each one goes up, down and up again, every `Down` leaves nothing behind, and no time column is without a time zone.
 - Handle every error. Never assign one to `_`.
 - A meaningful string literal is a named constant.
 - Pass `context.Context` as the first argument. Never store it in a struct field.

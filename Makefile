@@ -12,8 +12,8 @@ build: ## Build the API binary to bin/api
 test: ## Run unit tests
 	go test ./...
 
-test-int: ## Run integration tests in containers, against a migrated database
-	$(COMPOSE) --profile test run --rm --build inttest
+test-int: ## Run integration tests, on an embedded PostgreSQL
+	go test -tags=integration ./...
 
 mocks: ## Regenerate mocks from .mockery.yml
 	mockery

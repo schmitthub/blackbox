@@ -108,6 +108,9 @@ Flag these when they appear in the diff. Name the rule section in the comment.
   the fix is to list the interface in `.mockery.yml` and run `make mocks`.
 - A test that opens a database connection or a network connection without
   the `//go:build integration` line.
+- An integration test that needs a container or a running Compose stack.
+  Integration tests start an embedded PostgreSQL; containers are for
+  end-to-end tests.
 - An error assigned to `_` or otherwise not handled.
 - A meaningful string literal that is not a named constant.
 - A `context.Context` stored in a struct field.
