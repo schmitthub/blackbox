@@ -223,6 +223,8 @@ linters:
         - errors.Unwrap(
         - errors.Join(
 run:
+  build-tags:
+    - integration
   issues-exit-code: 1
   tests: true
 version: "2"

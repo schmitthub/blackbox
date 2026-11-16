@@ -103,6 +103,11 @@ replace `CLAUDE.md` with a relative link to it.
 
 Flag these when they appear in the diff. Name the rule section in the comment.
 
+- A hand-written fake, stub, or spy in a test: a test type that implements
+  an interface from this repository. Unit tests use the mockery mocks only;
+  the fix is to list the interface in `.mockery.yml` and run `make mocks`.
+- A test that opens a database connection or a network connection without
+  the `//go:build integration` line.
 - An error assigned to `_` or otherwise not handled.
 - A meaningful string literal that is not a named constant.
 - A `context.Context` stored in a struct field.

@@ -1,16 +1,19 @@
 COMPOSE := docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.override.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help build test mocks lint check image up down reset logs ps
+.PHONY: help build test test-int mocks lint check image up down reset logs ps
 
 help: ## List targets
-	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
+	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-9s %s\n", $$1, $$2}'
 
 build: ## Build the API binary to bin/api
 	CGO_ENABLED=0 go build -o bin/api ./cmd/api
 
 test: ## Run unit tests
 	go test ./...
+
+test-int: ## Run integration tests in containers, against a migrated database
+	$(COMPOSE) --profile test run --rm --build inttest
 
 mocks: ## Regenerate mocks from .mockery.yml
 	mockery

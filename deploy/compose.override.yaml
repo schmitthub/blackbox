@@ -1,4 +1,4 @@
-# local extras for testing and debugging; loaded automatically by `docker compose` run from deploy/
+# Local extras for testing and debugging. The Makefile loads this file after compose.yaml.
 services:
   postgres:
     ports:
@@ -6,3 +6,18 @@ services:
   api:
     ports:
       - "127.0.0.1:8080:8080"
+
+  # Integration tests: `make test-int`. Runs the tests tagged `integration`
+  # in the build image, against the migrated database.
+  inttest:
+    profiles: [test]
+    build:
+      context: ..
+      dockerfile: deploy/api/Dockerfile
+      target: build
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://blackbox:${POSTGRES_PASSWORD}@postgres:5432/blackbox?sslmode=disable
+    command: ["go", "test", "-tags=integration", "./..."]
