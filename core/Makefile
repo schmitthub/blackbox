@@ -2,7 +2,7 @@
 # with make -C core <target>.
 
 .DEFAULT_GOAL := help
-.PHONY: help build test test-int test-migrations mocks lint
+.PHONY: help build test test-int test-migrations mocks check-mocks lint
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -21,6 +21,9 @@ test-migrations: ## Run the real migrations up, down and up on an embedded Postg
 
 mocks: ## Regenerate mocks from .mockery.yml
 	mockery
+
+check-mocks: mocks ## Fail when the committed mocks are out of date
+	git diff --exit-code -- ':(glob)**/mocks/**'
 
 lint: ## Run golangci-lint
 	golangci-lint run --config .golangci.yml

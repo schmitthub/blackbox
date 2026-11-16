@@ -9,7 +9,7 @@ priority in full and the comment style; this file is the procedure.
 ## 1. Lint suppression
 
 Search every added or changed line in the diff for `//nolint`, `// nolint`,
-`#nosec`, `//lint:ignore`, and `nosemgrep`. Search `core/.golangci.yml` changes
+`#nosec`, `//lint:ignore`, and `nosemgrep`. Search a project's `.golangci.yml` changes
 for `exclusions`, `exclude`, and `nolintlint`. List every hit as `file:line`.
 Report each hit as its own comment (priority 1).
 

@@ -3,7 +3,7 @@
 monorepo_root = true
 
 [monorepo]
-config_roots = ["core"]
+config_roots = ["core", "mcp"]
 # One lockfile next to each mise.toml.
 lockfile = false
 

@@ -1,0 +1,5 @@
+{
+  "name": "Core",
+  "checks": ["lint", "check-mocks", "test", "test-int", "test-migrations"],
+  "codeql": ["go"]
+}

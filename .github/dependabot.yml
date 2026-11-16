@@ -11,6 +11,14 @@ updates:
       go-minor-patch:
         update-types: [minor, patch]
 
+  - package-ecosystem: gomod
+    directory: /mcp
+    schedule:
+      interval: monthly
+    groups:
+      go-minor-patch:
+        update-types: [minor, patch]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

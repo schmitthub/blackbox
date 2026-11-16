@@ -10,7 +10,7 @@ make up
 curl localhost:8080/healthz
 ```
 
-`make help` lists every target: build, test, lint, compose operations.
+`make help` lists the repository-wide targets. Each project has its own: `make -C core help`, `make -C mcp help`.
 
 ## Setup
 

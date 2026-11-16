@@ -40,7 +40,7 @@ repo = "local"
 [[repos.hooks]]
 id = "golangci-lint"
 name = "golangci-lint"
-# Expected version: 2.15.0 (must match the golangci-lint job in ci.yml).
+# golangci-lint is pinned in mise.toml; CI installs the same one with mise-action.
 entry = "make lint"
 language = "system"
 types = ["go"]
