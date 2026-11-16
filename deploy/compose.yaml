@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: blackbox
       POSTGRES_DB: blackbox
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in deploy/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
       TZ: UTC
     volumes:
       - pgdata:/var/lib/postgresql

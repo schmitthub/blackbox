@@ -1,4 +1,4 @@
-COMPOSE := docker compose -f deploy/compose.yaml -f deploy/compose.override.yaml
+COMPOSE := docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.override.yaml
 
 .DEFAULT_GOAL := help
 .PHONY: help build test mocks lint check image up down reset logs ps

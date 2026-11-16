@@ -3,7 +3,7 @@
 # MCP client application. Safe to run again: it finds each resource first,
 # then creates or updates it.
 #
-# `scripts/setup.sh --auth0` runs this with the settings in deploy/.env.
+# `scripts/setup.sh --auth0` runs this with the settings in .env.
 # Run it directly only to try other settings.
 #
 # Needs the auth0 CLI and jq (`mise install`), and a CLI session on the
@@ -39,12 +39,18 @@ for tool in auth0 jq; do
 	}
 done
 
-tenants=$(auth0 tenants list --json 2>/dev/null) || tenants='[]'
+# The auth0 CLI reads a JSON payload from stdin when stdin is not a terminal,
+# and waits for it. Give every call an empty stdin.
+a0() {
+	auth0 "$@" </dev/null
+}
+
+tenants=$(a0 tenants list --json 2>/dev/null) || tenants='[]'
 
 if [[ -z $domain ]]; then
 	domain=$(jq -r '.[] | select(.active) | .name' <<<"$tenants")
 	if [[ -z $domain ]]; then
-		echo "no Auth0 tenant: set AUTH0_DOMAIN in deploy/.env or run \`auth0 login\`" >&2
+		echo "no Auth0 tenant: set AUTH0_DOMAIN in .env or run \`auth0 login\`" >&2
 		exit 1
 	fi
 elif ! jq -e --arg d "$domain" 'any(.[]; .name == $d)' <<<"$tenants" >/dev/null; then
@@ -55,7 +61,7 @@ fi
 echo "Tenant: $domain" >&2
 
 # The API. Its identifier is the lookup key; Auth0 never lets it change.
-api_id=$(auth0 apis list --tenant "$domain" --number 1000 --json |
+api_id=$(a0 apis list --tenant "$domain" --number 1000 --json |
 	jq -r --arg id "$audience" '.[] | select(.identifier == $id) | .id')
 
 api_flags=(
@@ -68,10 +74,10 @@ api_flags=(
 )
 
 if [[ -z $api_id ]]; then
-	auth0 apis create --identifier "$audience" "${api_flags[@]}" >/dev/null
+	a0 apis create --identifier "$audience" "${api_flags[@]}" >/dev/null
 	echo "API: created $audience" >&2
 else
-	auth0 apis update "$api_id" "${api_flags[@]}" >/dev/null
+	a0 apis update "$api_id" "${api_flags[@]}" >/dev/null
 	echo "API: updated $audience" >&2
 fi
 
@@ -88,14 +94,14 @@ app_flags=(
 	--json
 )
 
-mcp_client_id=$(auth0 apps list --tenant "$domain" --number 1000 --json |
+mcp_client_id=$(a0 apps list --tenant "$domain" --number 1000 --json |
 	jq -r --arg name "$mcp_name" '.[] | select(.name == $name) | .client_id')
 
 if [[ -z $mcp_client_id ]]; then
-	mcp_client_id=$(auth0 apps create "${app_flags[@]}" | jq -r '.client_id')
+	mcp_client_id=$(a0 apps create "${app_flags[@]}" | jq -r '.client_id')
 	echo "MCP application: created $mcp_name" >&2
 else
-	auth0 apps update "$mcp_client_id" "${app_flags[@]}" >/dev/null
+	a0 apps update "$mcp_client_id" "${app_flags[@]}" >/dev/null
 	echo "MCP application: updated $mcp_name" >&2
 fi
 

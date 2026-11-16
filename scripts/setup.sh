@@ -2,22 +2,26 @@
 # Sets up a checkout of Blackbox. Safe to run again: each part only does
 # what is still missing.
 #
-# Usage: scripts/setup.sh [--env] [--auth0]
+# Usage, from the repository root: scripts/setup.sh [--env] [--auth0]
 #
-#   --env    deploy/.env: create it from deploy/.env.example, or add the
+#   --env    .env: create it from .env.example, or add the
 #            keys the example has and the file lacks. Never changes a value
 #            that is already there.
 #   --auth0  the Auth0 tenant: the API and the MCP client application, from
-#            the AUTH0_* settings in deploy/.env. Needs `auth0 login`. Runs
+#            the AUTH0_* settings in .env. Needs `auth0 login`. Runs
 #            --env first, because it reads that file.
 #
 # No flag runs every part.
 
 set -euo pipefail
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-env_file=$root/deploy/.env
-env_example=$root/deploy/.env.example
+env_file=.env
+env_example=.env.example
+
+if [[ ! -f $env_example ]]; then
+	echo "run this from the repository root: scripts/setup.sh" >&2
+	exit 1
+fi
 
 usage() {
 	sed -n '2,/^$/s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
@@ -47,7 +51,7 @@ for arg in "$@"; do
 	esac
 done
 
-# The Auth0 part reads deploy/.env.
+# The Auth0 part reads .env.
 if $run_auth0; then
 	run_env=true
 fi
@@ -55,7 +59,7 @@ fi
 setup_env() {
 	if [[ ! -f $env_file ]]; then
 		install -m 600 "$env_example" "$env_file"
-		echo "env: created deploy/.env from deploy/.env.example"
+		echo "env: created .env from .env.example"
 		return
 	fi
 
@@ -65,12 +69,12 @@ setup_env() {
 		key=${BASH_REMATCH[1]}
 		if ! grep -q "^$key=" "$env_file"; then
 			printf '%s\n' "$line" >>"$env_file"
-			echo "env: added $key to deploy/.env"
+			echo "env: added $key to .env"
 		fi
 	done <"$env_example"
 }
 
-# set_env KEY VALUE: sets KEY in deploy/.env, in place.
+# set_env KEY VALUE: sets KEY in .env, in place.
 set_env() {
 	local key=$1 value=$2 tmp
 
@@ -86,7 +90,7 @@ set_env() {
 	' "$env_file" >"$tmp"
 	chmod 600 "$tmp"
 	mv "$tmp" "$env_file"
-	echo "env: set $key in deploy/.env"
+	echo "env: set $key in .env"
 }
 
 setup_auth0() {
@@ -94,10 +98,10 @@ setup_auth0() {
 
 	out=$(
 		set -a
-		# shellcheck source=deploy/.env.example
-		. "$env_file"
+		# shellcheck source=.env.example
+		. "./$env_file"
 		set +a
-		"$root/scripts/auth0-setup.sh"
+		scripts/auth0-setup.sh
 	)
 
 	while IFS='=' read -r key value; do
