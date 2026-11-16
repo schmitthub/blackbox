@@ -1,6 +1,6 @@
 module github.com/schmitthub/blackbox
 
-go 1.27
+go 1.27.4
 
 require (
 	github.com/gin-gonic/gin v1.12.0
