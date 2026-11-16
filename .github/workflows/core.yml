@@ -124,3 +124,50 @@ jobs:
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:go;project:core
+
+  # A pull request that leaves this project alone is not scanned, but code
+  # scanning still expects every category that main has: without it the
+  # CodeQL check ends neutral with "1 configuration not found". So copy the
+  # latest results of this project's category from the base of the stack
+  # (main) to the pull request. Nothing in the project changed, so they hold.
+  # Same method as the republish step of
+  # https://github.com/advanced-security/monorepo-code-scanning-action, which
+  # reads the pull request's own base and so finds nothing above the lowest
+  # layer of a stack.
+  codeql-unchanged:
+    name: CodeQL (unchanged)
+    if: ${{ !inputs.scan }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: core
+
+      # The API lists analyses newest first.
+      - name: Download the results on the base branch
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.pull_request.stack.base.ref || github.event.pull_request.base.ref }}
+          CATEGORY: /language:go;project:core
+        run: |
+          id=$(gh api "repos/$REPO/code-scanning/analyses?ref=refs/heads/$BASE&tool_name=CodeQL&per_page=100" |
+            jq -r --arg c "$CATEGORY" 'first(.[] | select(.category == $c) | .id) // empty')
+          if [[ -z $id ]]; then
+            echo "No $CATEGORY results on $BASE: nothing to copy."
+            exit 0
+          fi
+          gh api -H 'Accept: application/sarif+json' "repos/$REPO/code-scanning/analyses/$id" > "$RUNNER_TEMP/codeql.sarif"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+
+      # The file names its category itself (automationDetails.id).
+      - name: Upload them to the pull request
+        if: steps.base.outputs.found == 'true'
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: ${{ runner.temp }}/codeql.sarif
