@@ -1,37 +1,36 @@
 #!/usr/bin/env bash
 # Sets up an Auth0 tenant for Blackbox: the API (resource server) and the
-# MCP client application. Safe to run again: it finds each resource first
-# and only creates what is missing.
+# MCP client application. Safe to run again: it finds each resource first,
+# then creates or updates it.
+#
+# `scripts/setup.sh --auth0` runs this with the settings in deploy/.env.
+# Run it directly only to try other settings.
 #
 # Needs the auth0 CLI and jq (`mise install`), and a CLI session on the
-# tenant to set up:
+# tenant: `auth0 login`.
 #
-#   auth0 login
-#   auth0 login --domain <tenant> --client-id <id> --client-secret <secret>
+# Settings, all from the environment. Each has a default:
 #
-# Usage:
+#   AUTH0_DOMAIN          tenant domain. Default: the CLI's active tenant.
+#   AUTH0_AUDIENCE        identifier of the API; the `aud` of its tokens.
+#                         It cannot change later. Default: urn:blackbox:api
+#   AUTH0_API_NAME        name of the API. Default: Blackbox API
+#   AUTH0_MCP_NAME        name of the MCP application. Default: Blackbox MCP
+#   AUTH0_MCP_CALLBACKS   comma-separated redirect URLs of the MCP client.
+#                         Default: http://localhost:8081/callback
+#   AUTH0_TOKEN_LIFETIME  access token lifetime, seconds. Default: 86400
 #
-#   BLACKBOX_AUDIENCE=https://blackbox.example.com/api \
-#   BLACKBOX_MCP_CALLBACKS=https://mcp.example.com/callback \
-#     scripts/auth0-setup.sh
-#
-# Settings, all from the environment:
-#
-#   BLACKBOX_AUDIENCE       required. Identifier of the API; the `aud` of its
-#                           tokens. Any URI you own. It cannot change later.
-#   BLACKBOX_MCP_CALLBACKS  required. Comma-separated redirect URLs of the
-#                           MCP client.
-#   BLACKBOX_API_NAME       name of the API. Default: Blackbox API
-#   BLACKBOX_MCP_NAME       name of the MCP application. Default: Blackbox MCP
-#   BLACKBOX_TOKEN_LIFETIME access token lifetime, seconds. Default: 86400
+# Prints the resulting AUTH0_DOMAIN, AUTH0_AUDIENCE and AUTH0_MCP_CLIENT_ID
+# as KEY=VALUE lines. None of them is secret.
 
 set -euo pipefail
 
-audience=${BLACKBOX_AUDIENCE:?set BLACKBOX_AUDIENCE to the API identifier, e.g. https://blackbox.example.com/api}
-callbacks=${BLACKBOX_MCP_CALLBACKS:?set BLACKBOX_MCP_CALLBACKS to the redirect URLs of the MCP client}
-api_name=${BLACKBOX_API_NAME:-Blackbox API}
-mcp_name=${BLACKBOX_MCP_NAME:-Blackbox MCP}
-token_lifetime=${BLACKBOX_TOKEN_LIFETIME:-86400}
+domain=${AUTH0_DOMAIN:-}
+audience=${AUTH0_AUDIENCE:-urn:blackbox:api}
+api_name=${AUTH0_API_NAME:-Blackbox API}
+mcp_name=${AUTH0_MCP_NAME:-Blackbox MCP}
+callbacks=${AUTH0_MCP_CALLBACKS:-http://localhost:8081/callback}
+token_lifetime=${AUTH0_TOKEN_LIFETIME:-86400}
 
 for tool in auth0 jq; do
 	command -v "$tool" >/dev/null || {
@@ -40,40 +39,46 @@ for tool in auth0 jq; do
 	}
 done
 
-domain=$(auth0 tenants list --json 2>/dev/null | jq -r '.[] | select(.active) | .name') || true
+tenants=$(auth0 tenants list --json 2>/dev/null) || tenants='[]'
+
 if [[ -z $domain ]]; then
-	echo "no active Auth0 tenant: run \`auth0 login\` first" >&2
+	domain=$(jq -r '.[] | select(.active) | .name' <<<"$tenants")
+	if [[ -z $domain ]]; then
+		echo "no Auth0 tenant: set AUTH0_DOMAIN in deploy/.env or run \`auth0 login\`" >&2
+		exit 1
+	fi
+elif ! jq -e --arg d "$domain" 'any(.[]; .name == $d)' <<<"$tenants" >/dev/null; then
+	echo "auth0 CLI is not logged in to $domain: run \`auth0 login --domain $domain\`" >&2
 	exit 1
 fi
 
 echo "Tenant: $domain" >&2
 
 # The API. Its identifier is the lookup key; Auth0 never lets it change.
-api_id=$(auth0 apis list --number 1000 --json |
+api_id=$(auth0 apis list --tenant "$domain" --number 1000 --json |
 	jq -r --arg id "$audience" '.[] | select(.identifier == $id) | .id')
 
+api_flags=(
+	--tenant "$domain"
+	--name "$api_name"
+	--signing-alg RS256
+	--token-lifetime "$token_lifetime"
+	--offline-access=true
+	--json
+)
+
 if [[ -z $api_id ]]; then
-	auth0 apis create \
-		--name "$api_name" \
-		--identifier "$audience" \
-		--signing-alg RS256 \
-		--token-lifetime "$token_lifetime" \
-		--offline-access=true \
-		--json >/dev/null
+	auth0 apis create --identifier "$audience" "${api_flags[@]}" >/dev/null
 	echo "API: created $audience" >&2
 else
-	auth0 apis update "$api_id" \
-		--name "$api_name" \
-		--signing-alg RS256 \
-		--token-lifetime "$token_lifetime" \
-		--offline-access=true \
-		--json >/dev/null
+	auth0 apis update "$api_id" "${api_flags[@]}" >/dev/null
 	echo "API: updated $audience" >&2
 fi
 
 # The MCP client: a public application (no client secret) that signs users
 # in with the authorization code flow and PKCE.
 app_flags=(
+	--tenant "$domain"
 	--name "$mcp_name"
 	--description "Blackbox MCP server"
 	--type native
@@ -83,7 +88,7 @@ app_flags=(
 	--json
 )
 
-mcp_client_id=$(auth0 apps list --number 1000 --json |
+mcp_client_id=$(auth0 apps list --tenant "$domain" --number 1000 --json |
 	jq -r --arg name "$mcp_name" '.[] | select(.name == $name) | .client_id')
 
 if [[ -z $mcp_client_id ]]; then
@@ -94,9 +99,8 @@ else
 	echo "MCP application: updated $mcp_name" >&2
 fi
 
-# Nothing below is secret.
-cat <<EOF
+cat <<OUT
 AUTH0_DOMAIN=$domain
 AUTH0_AUDIENCE=$audience
 AUTH0_MCP_CLIENT_ID=$mcp_client_id
-EOF
+OUT

@@ -29,6 +29,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 ## Commands
 
 - `make help` lists every target.
+- `scripts/setup.sh [--env] [--auth0]`: sets up a checkout; no flag runs every part. A new part is a flag there, is safe to run again, and takes its settings from `deploy/.env`. A new setting gets a line in `deploy/.env.example`.
 - `make test`, `make lint`: unit tests and golangci-lint.
 - `make mocks`: regenerate the mocks listed in `.mockery.yml`. Add an interface there; never edit or hand-write a mock.
 - `make check`: every commit hook on all files.
