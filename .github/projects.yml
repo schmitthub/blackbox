@@ -1,0 +1,5 @@
+# The paths of each project, for the `plan` job of workflows/ci.yml
+# (dorny/paths-filter). A project also counts as changed when a workflow changes.
+core:
+  - 'core/**'
+  - '.github/workflows/**'

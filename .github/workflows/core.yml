@@ -1,9 +1,18 @@
 name: core
 
-# Jobs for the Go module in core/. Called by ci.yml when a pull request
-# changes core/; never triggered on its own.
+# Jobs for the Go module in core/. Called by ci.yml, which decides what
+# runs; never triggered on its own.
 on:
   workflow_call:
+    inputs:
+      test:
+        description: Run the build, lint and test jobs.
+        type: boolean
+        required: true
+      scan:
+        description: Run the CodeQL scan.
+        type: boolean
+        required: true
 
 permissions:
   contents: read
@@ -13,6 +22,7 @@ jobs:
   # (new-from-merge-base in core/.golangci.yml).
   lint:
     name: golangci-lint
+    if: inputs.test
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -37,6 +47,7 @@ jobs:
 
   test:
     name: Unit Tests
+    if: inputs.test
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -56,6 +67,7 @@ jobs:
 
   integration:
     name: Integration Tests
+    if: inputs.test
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -69,6 +81,7 @@ jobs:
 
   migrations:
     name: Migration Tests
+    if: inputs.test
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -80,3 +93,34 @@ jobs:
           version: 2026.11.8
 
       - run: make -C core test-migrations
+
+  # CodeQL sees only this project: a sparse checkout of core/, the Go version
+  # of core/go.mod, and a category of its own, so its results stand beside
+  # those of other projects in the same language.
+  codeql:
+    name: CodeQL
+    if: inputs.scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: core
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: core/go.mod
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: go
+          build-mode: autobuild
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:go;project:core

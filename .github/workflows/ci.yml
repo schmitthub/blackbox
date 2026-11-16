@@ -22,16 +22,26 @@ permissions:
   contents: read
 
 jobs:
-  # Decides what the per-project workflows run. Two outputs:
+  # Decides what the per-project workflows run. Outputs:
   #
-  # heavy: a workflow runs once per layer of a stack, so project jobs (lint,
-  # tests) run only on the two layers GitHub's guide names. The top layer
-  # (position == size) holds the full set of changes. The lowest unmerged
-  # layer (stack base == pull request base) is the next to land; when it
-  # merges, GitHub rebases the next layer onto the base, which re-triggers CI
-  # with that layer now the lowest. `stack` is null outside a stack.
+  # heavy: a workflow runs once per layer of a stack, so a project's build,
+  # lint and test jobs run only on the two layers GitHub's guide names. The
+  # top layer (position == size) holds the full set of changes. The lowest
+  # unmerged layer (stack base == pull request base) is the next to land; when
+  # it merges, GitHub rebases the next layer onto the base, which re-triggers
+  # CI with that layer now the lowest. `stack` is null outside a stack.
   #
-  # One output per project (core): whether the pull request changes it.
+  # Two outputs per project, because a layer of a stack has two diffs:
+  #
+  # core: the project changed between the base of the stack and this layer.
+  # Gates the build, lint and test jobs. The top layer must test what the
+  # layers below it changed, so its own diff is not enough.
+  #
+  # core-layer: this layer's own diff changes the project. Gates the
+  # project's CodeQL scan, which runs on every such layer whatever `heavy`
+  # says: code scanning blocks a pull request only for alerts on lines in
+  # its own diff, so each layer must be scanned where its lines are.
+  #
   # Workflow-level `paths` filters are not used: a workflow skipped that way
   # leaves required checks pending, while a skipped job counts as passing.
   # https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks
@@ -43,10 +53,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
+      contents: read
       pull-requests: read
     outputs:
       heavy: ${{ steps.gate.outputs.heavy }}
-      core: ${{ steps.changes.outputs.core }}
+      core: ${{ steps.stack.outputs.core }}
+      core-layer: ${{ steps.layer.outputs.core }}
     steps:
       - name: Apply stack gate
         id: gate
@@ -59,24 +71,48 @@ jobs:
             'if $s == null or $s.position == $s.size or $s.base.ref == $base then "heavy=true" else "heavy=false" end' \
             | tee -a "$GITHUB_OUTPUT"
 
-      # A project also counts as changed when a workflow changes.
-      - name: Changed projects
-        id: changes
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # .github/projects.yml lists the paths of each project.
+
+      # With an empty token paths-filter uses git: a two-dot diff from `base`
+      # to the merge commit. When the base branch is ahead of the stack, its
+      # new files count as changed too; that only runs more, never less.
+      - name: Projects changed since the base of the stack
+        id: stack
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          filters: |
-            core:
-              - 'core/**'
-              - '.github/workflows/**'
+          token: ''
+          base: ${{ github.event.pull_request.stack.base.ref || github.event.pull_request.base.ref }}
+          filters: .github/projects.yml
+
+      # With a token paths-filter asks the API for the pull request's files:
+      # the diff against the pull request's own base, the layer below.
+      - name: Projects changed by this layer
+        id: layer
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: .github/projects.yml
 
   # One caller job per project. Each project has its own workflow file with
-  # its build, lint and test jobs. To add a project: add its filter to `plan`,
-  # a caller job here, and its name to `needs` of `passed`.
+  # its build, lint, test and CodeQL jobs. To add a project: add its paths to
+  # .github/projects.yml, its two outputs to `plan`, a caller job here, and
+  # its name to `needs` of
+  # `passed`.
+  #
+  # A push to main is a merge of code that already passed, so it only scans:
+  # pull request scans compare against the results on main.
   core:
     name: core
     needs: plan
-    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.plan.outputs.heavy != 'false' && needs.plan.outputs.core != 'false' }}
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/core.yml
+    with:
+      test: ${{ github.event_name == 'pull_request' && needs.plan.outputs.heavy != 'false' && needs.plan.outputs.core != 'false' }}
+      scan: ${{ needs.plan.outputs.core-layer != 'false' }}
 
   # Repository-wide jobs. They run on pull requests only; a push to main is a
   # merge of code that already passed.
@@ -182,39 +218,32 @@ jobs:
         with:
           config-file: ./.github/dependency-review-config.yml
 
-  # Repository-wide, and not gated on stacked pull requests or changed
-  # projects: a ruleset that requires code scanning results needs a CodeQL
-  # upload for every language on every layer. Add a project's language to
-  # the matrix. Also runs on main: pull request scans compare against it.
+  # CodeQL for the workflows themselves, the one language that belongs to no
+  # project. A project's languages are scanned in its own workflow, with its
+  # own toolchain and category. This job runs on every layer of a stack, so a
+  # ruleset that requires CodeQL results finds some on every pull request.
+  # Also runs on main: pull request scans compare against it.
   codeql:
-    name: Analyze (${{ matrix.language }})
+    name: Analyze (actions)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
       actions: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: go
-            build-mode: autobuild
-          - language: actions
-            build-mode: none
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          languages: actions
+          build-mode: none
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:actions
 
   # The one required status check. It passes when every job above passed or
   # was skipped, so the ruleset never names a project's jobs and a skipped
