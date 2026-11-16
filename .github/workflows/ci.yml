@@ -70,12 +70,14 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: core/go.mod
 
       # Keep the version in lockstep with the golangci-lint rev in prek.toml.
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0
+          working-directory: core
+          args: --config ../.golangci.yml
 
   test:
     name: Unit Tests
@@ -88,10 +90,11 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: core/go.mod
 
       # Same version as mise.toml and the mockery hook in prek.toml.
       - name: Mocks up to date
+        working-directory: core
         run: |
           go run github.com/vektra/mockery/v3@v3.9.1
           git diff --exit-code
@@ -109,7 +112,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: core/go.mod
 
       - run: make test-int
 

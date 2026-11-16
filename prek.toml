@@ -30,7 +30,7 @@ rev = "bfe2f84abd2f09fe0b83ba7f6dad40d296762f40" # frozen: v2.7.0
 id = "osv-scanner"
 # prek builds the hook; use the installed Go toolchain, never a download.
 language_version = "system"
-args = ["scan", "source", "--lockfile=go.mod", "--call-analysis=go", "--licenses=MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0"]
+args = ["scan", "source", "--lockfile=core/go.mod", "--call-analysis=go", "--licenses=MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0"]
 priority = "scan"
 
 # ── Tidy (mutates go.mod/go.sum — must precede the scan tier) ─────────────
@@ -53,8 +53,8 @@ rev = "25c5369a93aacb8cccea0d46e1569ca4a194564d" # frozen: v2.15.0
 id = "golangci-lint-full"
 # Use the installed linter and Go toolchain.
 language = "system"
-entry = "golangci-lint run"
-args = ["--config", ".golangci.yml"]
+entry = "make lint"
+pass_filenames = false
 priority = "scan"
 
 # ── Local ─────────────────────────────────────────────────────────────────

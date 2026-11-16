@@ -105,7 +105,7 @@ Flag these when they appear in the diff. Name the rule section in the comment.
 
 - A hand-written fake, stub, or spy in a test: a test type that implements
   an interface from this repository. Unit tests use the mockery mocks only;
-  the fix is to list the interface in `.mockery.yml` and run `make mocks`.
+  the fix is to list the interface in `core/.mockery.yml` and run `make mocks`.
 - A test that opens a database connection or a network connection without
   the `//go:build integration` line.
 - An integration test that needs a container or a running Compose stack.

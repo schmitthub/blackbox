@@ -7,22 +7,22 @@ help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
 build: ## Build the API binary to bin/api
-	CGO_ENABLED=0 go build -o bin/api ./core/cmd/api
+	CGO_ENABLED=0 go -C core build -o ../bin/api ./cmd/api
 
 test: ## Run unit tests
-	go test ./...
+	go -C core test ./...
 
 test-int: ## Run integration tests, on an embedded PostgreSQL
-	go test -tags=integration ./...
+	go -C core test -tags=integration ./...
 
 test-migrations: ## Run the real migrations up, down and up on a throwaway database
-	scripts/test-migrations.sh
+	core/scripts/test-migrations.sh
 
-mocks: ## Regenerate mocks from .mockery.yml
-	mockery
+mocks: ## Regenerate mocks from core/.mockery.yml
+	cd core && mockery
 
 lint: ## Run golangci-lint
-	golangci-lint run --config .golangci.yml
+	cd core && golangci-lint run --config ../.golangci.yml
 
 check: ## Run every prek hook on all files
 	prek run --all-files

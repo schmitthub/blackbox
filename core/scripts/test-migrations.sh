@@ -2,7 +2,7 @@
 # Tests the migrations by running them: the same goose image and Compose
 # service that production uses, on a throwaway database.
 #
-# Usage, from the repository root: scripts/test-migrations.sh
+# Usage, from the repository root: core/scripts/test-migrations.sh
 #
 # Checks:
 #   - every migration goes up, down and up again, one at a time
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 if [[ ! -f deploy/compose.yaml ]]; then
-	echo "run this from the repository root: scripts/test-migrations.sh" >&2
+	echo "run this from the repository root: core/scripts/test-migrations.sh" >&2
 	exit 1
 fi
 

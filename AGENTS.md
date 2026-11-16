@@ -19,7 +19,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 
 ## Layout
 
-- `core/`: all Go code of the monolith.
+- `core/`: the Go module of the monolith (`core/go.mod`). Run Go commands there, or through `make`.
 - `core/cmd/api/`: the binary. It only wires config, the database pool, the router and the server.
 - `core/internal/config/`: configuration from the environment.
 - `core/internal/api/`: HTTP routes and handlers.
@@ -34,7 +34,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - `make test`, `make lint`: unit tests and golangci-lint.
 - `make test-int`: integration tests. Each starts an embedded PostgreSQL of its own; no container is needed.
 - `make test-migrations`: runs the real migrations up, down and up on a throwaway database, in containers.
-- `make mocks`: regenerate the mocks listed in `.mockery.yml`. Add an interface there; never edit or hand-write a mock.
+- `make mocks`: regenerate the mocks listed in `core/.mockery.yml`. Add an interface there; never edit or hand-write a mock.
 - `make check`: every commit hook on all files.
 - `make up`, `make down`, `make reset`: the Compose stack. `make reset` deletes the database volume.
 
@@ -55,7 +55,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - A unit test replaces a dependency only with a mockery mock (`make mocks`). Never hand-write a fake, stub or spy.
 - A test that needs a database is an integration test: it carries `//go:build integration`, starts an embedded PostgreSQL, and runs with `make test-int`. `make test` needs no service and no network.
 - End-to-end tests run against the Compose stack in containers. Integration tests never use containers.
-- Migrations are tested by running them, never from Go code: `make test-migrations` (`scripts/test-migrations.sh`) runs the real goose image on a throwaway database. Each migration goes up, down and up again, every `Down` leaves nothing behind, and no time column is without a time zone.
+- Migrations are tested by running them, never from Go code: `make test-migrations` (`core/scripts/test-migrations.sh`) runs the real goose image on a throwaway database. Each migration goes up, down and up again, every `Down` leaves nothing behind, and no time column is without a time zone.
 - Handle every error. Never assign one to `_`.
 - A meaningful string literal is a named constant.
 - Pass `context.Context` as the first argument. Never store it in a struct field.
