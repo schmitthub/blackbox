@@ -1,3 +1,13 @@
+# Tools for the whole repository. Each project pins its own tools in its
+# own mise.toml; `mise install --monorepo` installs all of them.
+monorepo_root = true
+
+[monorepo]
+config_roots = ["core", "mcp"]
+# One lockfile next to each mise.toml.
+lockfile = false
+
 [tools]
-go = "1.27.4"
-mockery = "3.9.1"
+# scripts/auth0-setup.sh
+"aqua:auth0/auth0-cli" = "1.39.0"
+jq = "1.8.2"

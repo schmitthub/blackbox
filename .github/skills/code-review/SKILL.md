@@ -9,13 +9,13 @@ priority in full and the comment style; this file is the procedure.
 ## 1. Lint suppression
 
 Search every added or changed line in the diff for `//nolint`, `// nolint`,
-`#nosec`, `//lint:ignore`, and `nosemgrep`. Search `.golangci.yml` changes
+`#nosec`, `//lint:ignore`, and `nosemgrep`. Search a project's `.golangci.yml` changes
 for `exclusions`, `exclude`, and `nolintlint`. List every hit as `file:line`.
 Report each hit as its own comment (priority 1).
 
 ## 2. Authorization, user data, and schema
 
-Search the diff under `internal/api/` and `migrations/`, and every file that
+Search the diff under `core/internal/api/` and `core/migrations/`, and every file that
 builds or runs SQL. For each hit:
 
 1. For each new route, confirm it is behind the Auth0 token validation, or
@@ -27,10 +27,10 @@ builds or runs SQL. For each hit:
 3. Confirm each query uses placeholders.
 4. Confirm there is no `UPDATE` or `DELETE` on `events`, and that every
    stored time is UTC in a `timestamptz` column.
-5. For each file under `migrations/`, confirm it is new, not an edit of a
+5. For each file under `core/migrations/`, confirm it is new, not an edit of a
    file on `main`, and that it has both `Up` and `Down`.
 6. Confirm there is no `panic`, and no `log.Fatal` or `os.Exit` outside
-   `cmd/api/main.go`.
+   `core/cmd/api/main.go`.
 
 Report each failed check as a blocking comment (priority 2).
 

@@ -1,4 +1,4 @@
-# local extras for testing and debugging; loaded automatically by `docker compose` run from deploy/
+# Local extras for testing and debugging. The Makefile loads this file after compose.yaml.
 services:
   postgres:
     ports:

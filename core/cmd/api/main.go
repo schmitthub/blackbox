@@ -11,9 +11,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/schmitthub/blackbox/internal/api"
-	"github.com/schmitthub/blackbox/internal/config"
-	"github.com/schmitthub/blackbox/internal/server"
+	"github.com/schmitthub/blackbox/core/internal/api"
+	"github.com/schmitthub/blackbox/core/internal/config"
+	"github.com/schmitthub/blackbox/core/internal/server"
 )
 
 func main() {

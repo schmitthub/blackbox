@@ -1,5 +1,11 @@
 name: CI
 
+# The monorepo's one workflow. It holds no project: `plan` finds the projects
+# (every top-level directory with a ci.json) and decides what runs, and the
+# jobs after it run once per project through a matrix. A new project needs no
+# change here. The repository-wide jobs (security scans, agent files) follow
+# and run on every pull request.
+#
 # Stacked pull requests: GitHub triggers workflows as if every layer targets
 # the base of the stack, so `branches: [main]` runs this on every layer.
 # https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/optimizing-ci-for-stacked-pull-requests
@@ -17,86 +23,182 @@ permissions:
   contents: read
 
 jobs:
-  # A workflow runs once per layer of a stack, so the heavy jobs (lint, unit
-  # tests) run only on the two layers GitHub's guide
-  # names. The top layer (position == size) holds the full set of changes.
-  # The lowest unmerged layer (stack base == pull request base) is the next
-  # to land; when it merges, GitHub rebases the next layer onto the base,
-  # which re-triggers CI with that layer now the lowest. Cheap jobs run on
-  # every layer. `stack` is null outside a stack: everything runs.
-  #
-  # A skipped job counts as a passing required check. A layer can only merge
-  # together with every layer below it, and the layer being merged is either
-  # the top or was tested in full when it became the lowest.
-  #
-  # Dependents test `!= 'false'`, so an empty output (this job failing) runs everything.
-  stack:
-    name: Stack gate
-    if: github.event_name == 'pull_request'
+  # scripts/ci-plan.sh explains each output. Workflow-level `paths` filters
+  # are not used: a workflow skipped that way leaves required checks pending.
+  # https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks
+  plan:
+    name: Plan
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     outputs:
-      heavy: ${{ steps.gate.outputs.heavy }}
+      projects: ${{ steps.plan.outputs.projects }}
+      checks: ${{ steps.plan.outputs.checks }}
+      scans: ${{ steps.plan.outputs.scans }}
+      unchanged: ${{ steps.plan.outputs.unchanged }}
     steps:
-      - name: Apply stack gate
-        id: gate
-        env:
-          STACK: ${{ toJSON(github.event.pull_request.stack) }}
-          BASE: ${{ github.event.pull_request.base.ref }}
-        run: |
-          echo "stack=$STACK"
-          jq -nr --argjson s "$STACK" --arg base "$BASE" \
-            'if $s == null or $s.position == $s.size or $s.base.ref == $base then "heavy=true" else "heavy=false" end' \
-            | tee -a "$GITHUB_OUTPUT"
+      # Full history: the script diffs against the merge base.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
-  # Everything except CodeQL runs on pull requests only; a push to main is a
-  # merge of code that already passed. CodeQL also runs on main: pull request
-  # scans compare against that analysis. golangci-lint reports issues new since
-  # the merge base with main (new-from-merge-base in .golangci.yml).
-  lint:
-    name: golangci-lint
-    needs: stack
-    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
+      - name: Plan
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          STACK: ${{ toJSON(github.event.pull_request.stack) }}
+        run: scripts/ci-plan.sh | tee -a "$GITHUB_OUTPUT"
+
+  # One job per project and check. A check is a make target of the project,
+  # run with the tools of the project's mise.toml.
+  check:
+    name: ${{ matrix.name }} / ${{ matrix.check }}
+    needs: plan
+    if: needs.plan.outputs.checks != '[]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.checks) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      # The checkout is a detached HEAD; the merge base needs a local main.
-      - name: Fetch main for new-from-merge-base
+      # golangci-lint reports issues new since the merge base with main
+      # (new-from-merge-base). The checkout is a detached HEAD; the merge
+      # base needs a local main.
+      - name: Fetch main
         run: git fetch --no-tags origin main:main
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      # Installs the tools pinned in every mise.toml and mise.lock of the monorepo.
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          go-version-file: go.mod
+          version: 2026.11.8
 
-      # Keep the version in lockstep with the golangci-lint rev in prek.toml.
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: v2.15.0
+      - env:
+          DIR: ${{ matrix.dir }}
+          CHECK: ${{ matrix.check }}
+        run: make -C "$DIR" "$CHECK"
 
-  test:
-    name: Unit Tests
-    needs: stack
-    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
+  # One job per project and language. CodeQL sees only the project: a sparse
+  # checkout of its directory and a category of its own, so its results stand
+  # beside those of other projects in the same language. The Go toolchain is
+  # the one the project's go.mod names.
+  codeql:
+    name: ${{ matrix.name }} / CodeQL (${{ matrix.language }})
+    needs: plan
+    if: needs.plan.outputs.scans != '[]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.scans) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          sparse-checkout: ${{ matrix.dir }}
 
-      # Same version as mise.toml and the mockery hook in prek.toml.
-      - name: Mocks up to date
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }};project:${{ matrix.dir }}
+
+  # A pull request that leaves a project alone does not scan it, but code
+  # scanning still expects every category that main has: without it the
+  # CodeQL check ends neutral with "1 configuration not found". So copy the
+  # latest results of the project's category from the base of the stack
+  # (main) to the pull request. Nothing in the project changed, so they hold.
+  # Same method as the republish step of
+  # https://github.com/advanced-security/monorepo-code-scanning-action, which
+  # reads the pull request's own base and so finds nothing above the lowest
+  # layer of a stack.
+  codeql-unchanged:
+    name: ${{ matrix.name }} / CodeQL (${{ matrix.language }}, unchanged)
+    needs: plan
+    if: needs.plan.outputs.unchanged != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.unchanged) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: ${{ matrix.dir }}
+
+      # The API lists analyses newest first.
+      - name: Download the results on the base branch
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.pull_request.stack.base.ref || github.event.pull_request.base.ref }}
+          CATEGORY: /language:${{ matrix.language }};project:${{ matrix.dir }}
         run: |
-          go run github.com/vektra/mockery/v3@v3.9.1
-          git diff --exit-code
+          id=$(gh api "repos/$REPO/code-scanning/analyses?ref=refs/heads/$BASE&tool_name=CodeQL&per_page=100" |
+            jq -r --arg c "$CATEGORY" 'first(.[] | select(.category == $c) | .id) // empty')
+          if [[ -z $id ]]; then
+            echo "No $CATEGORY results on $BASE: nothing to copy."
+            exit 0
+          fi
+          gh api -H 'Accept: application/sarif+json' "repos/$REPO/code-scanning/analyses/$id" > "$RUNNER_TEMP/codeql.sarif"
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
-      - run: make test
+      # The file names its category itself (automationDetails.id).
+      - name: Upload them to the pull request
+        if: steps.base.outputs.found == 'true'
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: ${{ runner.temp }}/codeql.sarif
+
+  # The one check the ruleset requires for a project: "Core Status". It
+  # exists on every pull request, for every project, so it is never pending.
+  # It passes when every job of this run named "<project> / ..." passed or
+  # was skipped; `needs` cannot tell that, because it gives one result for
+  # the whole matrix, all projects together.
+  status:
+    name: ${{ matrix.name }} Status
+    needs: [plan, check, codeql, codeql-unchanged]
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.projects) }}
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.run_id }}
+          ATTEMPT: ${{ github.run_attempt }}
+          NAME: ${{ matrix.name }}
+        run: |
+          gh api --paginate "repos/$REPO/actions/runs/$RUN/attempts/$ATTEMPT/jobs?per_page=100" --jq '.jobs[]' |
+            jq -s --arg p "$NAME / " 'map(select(.name | startswith($p)) | {name, conclusion})' | tee jobs.json
+          jq -e 'all(.conclusion == "success" or .conclusion == "skipped")' jobs.json
+
+  # Repository-wide jobs. They run on pull requests only; a push to main is a
+  # merge of code that already passed.
 
   # The agent-file layout check the agent-compat commit hook runs, plus the
   # checker's own tests. Needs python3 >= 3.11 (tomllib); ubuntu-24.04 has 3.12.
@@ -199,34 +301,43 @@ jobs:
         with:
           config-file: ./.github/dependency-review-config.yml
 
-  # Not gated on stacked pull requests: a ruleset that requires code scanning
-  # results needs a CodeQL upload for every language on every layer.
-  codeql:
-    name: Analyze (${{ matrix.language }})
+  # CodeQL for the workflows themselves, the one language that belongs to no
+  # project. The `codeql` job scans each project's languages. This job runs on every layer of a stack, so a
+  # ruleset that requires CodeQL results finds some on every pull request.
+  # Also runs on main: pull request scans compare against it.
+  codeql-actions:
+    name: Analyze (actions)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
       actions: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: go
-            build-mode: autobuild
-          - language: actions
-            build-mode: none
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          languages: actions
+          build-mode: none
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:actions
+
+  # The one check the ruleset requires for the repository-wide jobs. Add a
+  # new one to `needs`.
+  repo-status:
+    name: Repository Status
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: [agent-compat, semgrep, gitleaks, dependency-review, codeql-actions]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          jq -e 'all(. == "success" or . == "skipped")' <<<"$RESULTS"

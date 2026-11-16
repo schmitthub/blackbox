@@ -1,22 +1,12 @@
-COMPOSE := docker compose -f deploy/compose.yaml -f deploy/compose.override.yaml
+# Repository-wide targets. The Go module's targets are in core/Makefile:
+# make -C core <target>.
+COMPOSE := docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.override.yaml
 
 .DEFAULT_GOAL := help
-.PHONY: help build test mocks lint check image up down reset logs ps
+.PHONY: help check image up down reset logs ps
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
-
-build: ## Build the API binary to bin/api
-	CGO_ENABLED=0 go build -o bin/api ./cmd/api
-
-test: ## Run unit tests
-	go test ./...
-
-mocks: ## Regenerate mocks from .mockery.yml
-	mockery
-
-lint: ## Run golangci-lint
-	golangci-lint run --config .golangci.yml
 
 check: ## Run every prek hook on all files
 	prek run --all-files

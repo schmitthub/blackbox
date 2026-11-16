@@ -4,7 +4,15 @@ version: 2
 
 updates:
   - package-ecosystem: gomod
-    directory: /
+    directory: /core
+    schedule:
+      interval: monthly
+    groups:
+      go-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: gomod
+    directory: /mcp
     schedule:
       interval: monthly
     groups:

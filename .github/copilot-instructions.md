@@ -17,7 +17,7 @@ Markers to find in the diff:
 - `#nosec`
 - `//lint:ignore`
 - `nosemgrep`
-- Changes to `exclusions`, `exclude`, or `nolintlint` settings in `.golangci.yml`
+- Changes to `exclusions`, `exclude`, or `nolintlint` settings in a project's `.golangci.yml`
 
 The repository rule (`AGENTS.md`, Rules) is: do not add a lint suppression
 without explicit maintainer approval. Correct the code so the linter passes.
@@ -28,10 +28,41 @@ comment:
 2. State that the rule requires maintainer approval.
 3. Propose the code change that removes the need for the suppression.
 
-## Priority 2: authorization, user data, and schema
+## Priority 2: the maintainer's own accounts and identifiers
 
-Applies to `internal/api/**`, `migrations/**`, and any file that builds or
-runs SQL. The rules are in `AGENTS.md`, Data rules. Report each of these as a
+This repository is public, and other people set it up against their own
+accounts. Flag every added or changed line that contains a value belonging to
+the maintainer's own accounts or infrastructure. Report each as a blocking
+finding. There is no exception for a fallback, a default, an example, a test
+fixture, or a comment.
+
+Values to find in the diff:
+
+- An Auth0 tenant name or domain (`<name>.auth0.com`, `<name>.<region>.auth0.com`), a
+  client ID, an API identifier (audience), or a connection or organization ID.
+- An email address, or a personal name used as a value.
+- A domain or hostname the maintainer owns, in a URL, a callback, an origin,
+  or a default.
+- A cloud account, project, tenant, or subscription ID, a registry or bucket
+  name, a host name, or an IP address.
+
+Not a finding:
+
+- The module path and repository URL, `github.com/schmitthub/blackbox`.
+- The copyright line in `LICENSE`.
+- Reserved placeholders: `example.com`, `example.org`, `*.example`,
+  `localhost`, `127.0.0.1`.
+
+The rule is in `AGENTS.md`, Rules. The fix is always the same: read the value
+from configuration and make it required, or use a reserved placeholder in
+examples and tests. A missing value is an error, never a silent fallback to
+the maintainer's value.
+
+## Priority 3: authorization, user data, and schema
+
+Applies to `core/internal/api/**`, `core/migrations/**`, and any file that builds or
+runs SQL. The rules are in `core/AGENTS.md`, Data rules and Migrations.
+Report each of these as a
 blocking finding:
 
 - **No auth.** A route other than `/healthz` that is not behind the Auth0
@@ -49,9 +80,9 @@ blocking finding:
 - **Edited migration.** A change to a migration file that is on `main`. A
   schema change is a new goose migration with `Up` and `Down`.
 - **Crash path.** `panic` anywhere, or `log.Fatal` or `os.Exit` outside
-  `cmd/api/main.go`.
+  `core/cmd/api/main.go`.
 
-## Priority 3: `CLAUDE.md` files
+## Priority 4: `CLAUDE.md` files
 
 Every `CLAUDE.md` in this repository is a symbolic link to the file
 `AGENTS.md` in the same directory.
@@ -69,19 +100,27 @@ the link target string. Report each of these as a blocking finding:
 The fix is always the same: move the content to the sibling `AGENTS.md` and
 replace `CLAUDE.md` with a relative link to it.
 
-## Priority 4: standing rules from `AGENTS.md`
+## Priority 5: standing rules from `core/AGENTS.md` and `AGENTS.md`
 
 Flag these when they appear in the diff. Name the rule section in the comment.
 
+- A hand-written fake, stub, or spy in a test: a test type that implements
+  an interface from this repository. Unit tests use the mockery mocks only;
+  the fix is to list the interface in `core/.mockery.yml` and run `make mocks`.
+- A test that opens a database connection or a network connection without
+  the `//go:build integration` line.
+- An integration test that needs a container or a running Compose stack.
+  Integration tests start an embedded PostgreSQL; containers are for
+  end-to-end tests.
 - An error assigned to `_` or otherwise not handled.
 - A meaningful string literal that is not a named constant.
 - A `context.Context` stored in a struct field.
 - A dependency, container image, GitHub Action, or hook without an exact
   version and digest or commit SHA.
-- Logic in `cmd/api`. It only wires config, the database pool, the router,
+- Logic in `core/cmd/api`. It only wires config, the database pool, the router,
   and the server.
-- A read of the environment outside `internal/config`, or an HTTP server
-  started outside `internal/server`.
+- A read of the environment outside `core/internal/config`, or an HTTP server
+  started outside `core/internal/server`.
 
 ## Do not report
 
