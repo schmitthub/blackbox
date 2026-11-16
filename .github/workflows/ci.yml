@@ -52,7 +52,7 @@ jobs:
   # Everything except CodeQL runs on pull requests only; a push to main is a
   # merge of code that already passed. CodeQL also runs on main: pull request
   # scans compare against that analysis. golangci-lint reports issues new since
-  # the merge base with main (new-from-merge-base in .golangci.yml).
+  # the merge base with main (new-from-merge-base in core/.golangci.yml).
   lint:
     name: golangci-lint
     needs: stack
@@ -77,7 +77,7 @@ jobs:
         with:
           version: v2.15.0
           working-directory: core
-          args: --config ../.golangci.yml
+          args: --config .golangci.yml
 
   test:
     name: Unit Tests
@@ -95,10 +95,10 @@ jobs:
 
       - name: Mocks up to date
         run: |
-          make mocks
+          make -C core mocks
           git diff --exit-code
 
-      - run: make test
+      - run: make -C core test
 
   integration:
     name: Integration Tests
@@ -113,7 +113,7 @@ jobs:
         with:
           go-version-file: core/go.mod
 
-      - run: make test-int
+      - run: make -C core test-int
 
   migrations:
     name: Migration Tests
@@ -129,7 +129,7 @@ jobs:
         with:
           version: 2026.11.8
 
-      - run: make test-migrations
+      - run: make -C core test-migrations
 
   # The agent-file layout check the agent-compat commit hook runs, plus the
   # checker's own tests. Needs python3 >= 3.11 (tomllib); ubuntu-24.04 has 3.12.

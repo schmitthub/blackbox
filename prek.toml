@@ -1,17 +1,11 @@
-# prek hooks, same setup as schmitthub/clawker minus its project-specific hooks.
+# prek hooks for the whole repository. Each project has its own prek.toml
+# (core/prek.toml); prek finds them from here and runs their hooks in the
+# project's directory.
 # Install: prek install
 # Run all: prek run --all-files
-#
-# Scheduling: lower priority runs first; hooks sharing a priority run
-# concurrently. go-mod-tidy mutates go.mod/go.sum, so it runs alone in the
-# "fix" tier before every scan that reads module state.
 
 [priorities]
-fix = 0
-build = 7
 scan = 10
-
-# ── Security ──────────────────────────────────────────────────────────────
 
 [[repos]]
 repo = "https://github.com/gitleaks/gitleaks"
@@ -21,90 +15,22 @@ rev = "83d9cd684c87d95d656c1458ef04895a7f1cbd8e" # frozen: v8.30.1
 id = "gitleaks"
 priority = "scan"
 
-# Vulnerability (Go call analysis) and license allowlist gate.
-[[repos]]
-repo = "https://github.com/google/osv-scanner"
-rev = "02f96a40691c2d155fdda799af436e111231e365" # frozen: v2.7.1
-
-[[repos.hooks]]
-id = "osv-scanner"
-# prek builds the hook; use the installed Go toolchain, never a download.
-language_version = "system"
-args = ["scan", "source", "--lockfile=core/go.mod", "--call-analysis=go", "--licenses=MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0"]
-priority = "scan"
-
-# ── Tidy (mutates go.mod/go.sum — must precede the scan tier) ─────────────
-
-[[repos]]
-repo = "https://github.com/tekwizely/pre-commit-golang"
-rev = "f298c082154b2cb239fac06a4f452368e66e66dd" # frozen: v1.0.0-rc.4
-
-[[repos.hooks]]
-id = "go-mod-tidy"
-priority = "fix"
-
-# ── Lint ──────────────────────────────────────────────────────────────────
-
-[[repos]]
-repo = "https://github.com/golangci/golangci-lint"
-rev = "25c5369a93aacb8cccea0d46e1569ca4a194564d" # frozen: v2.15.0
-
-[[repos.hooks]]
-id = "golangci-lint-full"
-# Use the installed linter and Go toolchain.
-language = "system"
-entry = "make lint"
-pass_filenames = false
-priority = "scan"
-
-# ── Local ─────────────────────────────────────────────────────────────────
-
 [[repos]]
 repo = "local"
 
 [[repos.hooks]]
-id = "semgrep"
-name = "Semgrep SAST"
-# Expected version: 1.185.0 (must match the CI image tag in ci.yml).
-# --error is required: without it Semgrep exits 0 even with findings.
-entry = "semgrep scan --config p/golang --config p/security-audit --error"
-language = "system"
-types = ["go"]
-pass_filenames = false
-priority = "scan"
-
-[[repos.hooks]]
 id = "semgrep-actions"
 name = "Semgrep GitHub Actions"
+# Expected version: 1.185.0 (must match the CI image tag in ci.yml).
 # Scans workflow YAML: p/github-actions catches the pull_request_target
 # checkout (pwn-request); .semgrep/ adds the pull_request_target cache
-# (poisoning) rule. Separate hook so workflow edits are gated even when
-# no Go file changes.
+# (poisoning) rule. --error is required: without it Semgrep exits 0 even
+# with findings.
 entry = "semgrep scan --config p/github-actions --config .semgrep/ --error"
 language = "system"
 files = '^\.github/workflows/.*\.ya?ml$'
 pass_filenames = false
 priority = "scan"
-
-[[repos.hooks]]
-id = "mockery"
-name = "Mocks up to date"
-# mockery is pinned in core/mise.toml; CI installs the same one with mise-action.
-# Regenerates the mocks; prek fails the commit when a file changes.
-entry = "make mocks"
-language = "system"
-types = ["go"]
-pass_filenames = false
-priority = "fix"
-
-[[repos.hooks]]
-id = "go-test"
-name = "Unit tests"
-entry = "make test"
-language = "system"
-types = ["go"]
-pass_filenames = false
-priority = "build"
 
 [[repos.hooks]]
 id = "agent-compat"

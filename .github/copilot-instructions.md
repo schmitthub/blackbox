@@ -17,7 +17,7 @@ Markers to find in the diff:
 - `#nosec`
 - `//lint:ignore`
 - `nosemgrep`
-- Changes to `exclusions`, `exclude`, or `nolintlint` settings in `.golangci.yml`
+- Changes to `exclusions`, `exclude`, or `nolintlint` settings in `core/.golangci.yml`
 
 The repository rule (`AGENTS.md`, Rules) is: do not add a lint suppression
 without explicit maintainer approval. Correct the code so the linter passes.

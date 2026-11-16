@@ -1,5 +1,5 @@
-# Targets for the Go module in core/. The Makefile in the repository root
-# forwards to these, so `make test` there and `make test` here are the same.
+# Targets for the Go module. Run them in core/, or from the repository root
+# with make -C core <target>.
 
 .DEFAULT_GOAL := help
 .PHONY: help build test test-int test-migrations mocks lint
@@ -7,8 +7,8 @@
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
-build: ## Build the API binary to bin/api in the repository root
-	CGO_ENABLED=0 go build -o ../bin/api ./cmd/api
+build: ## Build the API binary to bin/api
+	CGO_ENABLED=0 go build -o bin/api ./cmd/api
 
 test: ## Run unit tests
 	go test ./...
@@ -23,4 +23,4 @@ mocks: ## Regenerate mocks from .mockery.yml
 	mockery
 
 lint: ## Run golangci-lint
-	golangci-lint run --config ../.golangci.yml
+	golangci-lint run --config .golangci.yml

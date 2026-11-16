@@ -1,16 +1,12 @@
+# Repository-wide targets. The Go module's targets are in core/Makefile:
+# make -C core <target>.
 COMPOSE := docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.override.yaml
-CORE_TARGETS := build test test-int test-migrations mocks lint
 
 .DEFAULT_GOAL := help
-.PHONY: help check image up down reset logs ps $(CORE_TARGETS)
+.PHONY: help check image up down reset logs ps
 
 help: ## List targets
-	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
-	@$(MAKE) -s -C core help | grep -v "List targets"
-
-# The Go module's targets live in core/Makefile.
-$(CORE_TARGETS):
-	@$(MAKE) -C core $@
+	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
 
 check: ## Run every prek hook on all files
 	prek run --all-files

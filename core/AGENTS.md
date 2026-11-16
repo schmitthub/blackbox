@@ -11,12 +11,13 @@ The Go module of the Blackbox monolith (`github.com/schmitthub/blackbox/core`): 
 - `migrations/`: goose migrations.
 - `scripts/`: test helpers, run from `core/` (the make targets do that).
 - `mise.toml`, `mise.lock`: the tools this module needs: Go, mockery, goose, embedded-postgres.
+- `prek.toml`: this module's commit hooks. `.golangci.yml`, `.mockery.yml`: lint and mock configuration.
 
 ## Commands
 
-These targets are in `core/Makefile`. The root `Makefile` forwards to them, so they run the same from the repository root and from `core/`.
+These targets are in `core/Makefile`. Run them in `core/`, or from the repository root with `make -C core <target>`.
 
-- `make build`: the API binary, to `bin/api` in the repository root.
+- `make build`: the API binary, to `core/bin/api`.
 - `make test`, `make lint`: unit tests and golangci-lint.
 - `make test-int`: integration tests. Each starts an embedded PostgreSQL of its own; no container is needed.
 - `make test-migrations`: runs the real migrations up, down and up on an embedded PostgreSQL. No container is needed.
