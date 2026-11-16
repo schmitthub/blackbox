@@ -20,8 +20,8 @@
 #                         Default: http://localhost:8081/callback
 #   AUTH0_TOKEN_LIFETIME  access token lifetime, seconds. Default: 86400
 #
-# Prints the resulting AUTH0_DOMAIN, AUTH0_AUDIENCE and AUTH0_MCP_CLIENT_ID
-# as KEY=VALUE lines. None of them is secret.
+# Prints what Auth0 decided, AUTH0_DOMAIN and AUTH0_MCP_CLIENT_ID, as
+# KEY=VALUE lines. Neither is secret.
 
 set -euo pipefail
 
@@ -107,6 +107,5 @@ fi
 
 cat <<OUT
 AUTH0_DOMAIN=$domain
-AUTH0_AUDIENCE=$audience
 AUTH0_MCP_CLIENT_ID=$mcp_client_id
 OUT

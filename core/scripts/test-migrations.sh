@@ -24,9 +24,10 @@ done
 
 # First pass: run this script again inside `embedded-postgres exec`, which
 # starts PostgreSQL, sets DATABASE_URL, and stops PostgreSQL when the
-# script ends.
-if [[ -z ${DATABASE_URL:-} ]]; then
-	exec embedded-postgres exec -- "$0"
+# script ends. Only --inside marks the second pass: a DATABASE_URL already
+# in the environment may point at a real database and is never used.
+if [[ ${1:-} != --inside ]]; then
+	exec embedded-postgres exec -- "$0" --inside
 fi
 
 export GOOSE_DRIVER=postgres GOOSE_DBSTRING=$DATABASE_URL GOOSE_MIGRATION_DIR=migrations

@@ -67,27 +67,40 @@ setup_env() {
 	while IFS= read -r line; do
 		[[ $line =~ ^([A-Z0-9_]+)= ]] || continue
 		key=${BASH_REMATCH[1]}
-		if ! grep -q "^$key=" "$env_file"; then
+		if ! grep -Eq "^[[:space:]]*(export[[:space:]]+)?$key=" "$env_file"; then
+			# A file that does not end in a newline would get the key
+			# glued onto its last value.
+			if [[ -s $env_file && -n $(tail -c 1 "$env_file") ]]; then
+				echo >>"$env_file"
+			fi
+
 			printf '%s\n' "$line" >>"$env_file"
 			echo "env: added $key to .env"
 		fi
 	done <"$env_example"
 }
 
-# set_env KEY VALUE: sets KEY in .env, in place.
+# set_env KEY VALUE: sets KEY in .env, in place. A line may be indented or
+# start with `export`; it keeps that prefix.
 set_env() {
 	local key=$1 value=$2 tmp
 
-	if grep -qxF "$key=$value" "$env_file"; then
-		return
-	fi
-
 	tmp=$(mktemp "$env_file.XXXXXX")
 	awk -v key="$key" -v value="$value" '
-		index($0, key "=") == 1 { print key "=" value; done = 1; next }
+		match($0, "^[[:space:]]*(export[[:space:]]+)?" key "=") {
+			print substr($0, 1, RLENGTH) value
+			done = 1
+			next
+		}
 		{ print }
 		END { if (!done) print key "=" value }
 	' "$env_file" >"$tmp"
+
+	if cmp -s "$tmp" "$env_file"; then
+		rm -f "$tmp"
+		return
+	fi
+
 	chmod 600 "$tmp"
 	mv "$tmp" "$env_file"
 	echo "env: set $key in .env"

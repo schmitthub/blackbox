@@ -10,3 +10,4 @@ lockfile = false
 [tools]
 # scripts/auth0-setup.sh
 "aqua:auth0/auth0-cli" = "1.39.0"
+jq = "1.8.2"
