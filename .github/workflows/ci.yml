@@ -95,13 +95,9 @@ jobs:
           filters: .github/projects.yml
 
   # One caller job per project. Each project has its own workflow file with
-  # its build, lint, test and CodeQL jobs. To add a project: add its paths to
-  # .github/projects.yml, its two outputs to `plan`, and a caller job here.
-  #
-  # A caller job always runs, and its jobs skip themselves through the
-  # inputs: a skipped job reports its check as skipped, which satisfies a
-  # required check. A skipped caller would report no checks at all and leave
-  # them pending.
+  # its build, lint, test and CodeQL jobs, and one status job here. To add a
+  # project: add its paths to .github/projects.yml, its two outputs to `plan`,
+  # a caller job and a status job here, and the status to the ruleset.
   #
   # A push to main is a merge of code that already passed, so it only scans:
   # pull request scans compare against the results on main.
@@ -116,6 +112,21 @@ jobs:
     with:
       test: ${{ github.event_name == 'pull_request' && needs.plan.outputs.heavy != 'false' && needs.plan.outputs.core != 'false' }}
       scan: ${{ needs.plan.outputs.core-layer != 'false' }}
+
+  # The one check the ruleset requires for the project. It passes when every
+  # job of the project's workflow passed or was skipped.
+  core-status:
+    name: Core Status
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: core
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULT: ${{ needs.core.result }}
+        run: |
+          echo "core: $RESULT"
+          [[ $RESULT == success || $RESULT == skipped ]]
 
   # Repository-wide jobs. They run on pull requests only; a push to main is a
   # merge of code that already passed.
@@ -247,3 +258,18 @@ jobs:
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:actions
+
+  # The one check the ruleset requires for the repository-wide jobs. Add a
+  # new one to `needs`.
+  repo-status:
+    name: Repository Status
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: [agent-compat, semgrep, gitleaks, dependency-review, codeql]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          jq -e 'all(. == "success" or . == "skipped")' <<<"$RESULTS"

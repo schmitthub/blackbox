@@ -42,6 +42,6 @@ Run every command and every script in `scripts/` from the repository root; they 
 - Every commit goes through the prek hooks. The `git-checks` guard blocks `--no-verify` and the other ways around them.
 - Commits must be signed. `main` only takes squash merges from pull requests.
 - CI follows the same split. `.github/workflows/ci.yml` is the entry workflow: it holds the repository-wide jobs and calls one workflow per project (`core.yml`). A project's jobs go in its own workflow, never in `ci.yml`: build, lint, tests and its CodeQL scan, with its own toolchain version and its own CodeQL category (`/language:go;project:core`). `.github/projects.yml` lists each project's paths.
-- A project's jobs skip themselves when the pull request leaves the project alone; `ci.yml` passes them the decision as inputs. Never skip the caller job and never use a workflow-level `paths` filter: both leave required checks pending.
-- The `main` ruleset requires each project's checks by name (`core / Unit Tests`). A new required job or project needs a ruleset change by the maintainer.
+- A project's jobs skip themselves when the pull request leaves the project alone; `ci.yml` passes them the decision as inputs. Never use a workflow-level `paths` filter: it leaves required checks pending.
+- The `main` ruleset requires one status check per project (`Core Status`) and `Repository Status` for the repository-wide jobs. Each is a job in `ci.yml` that passes when the jobs it stands for passed or were skipped. A new project gets its own status job; adding it to the ruleset is the maintainer's step.
 - Keep scanner versions in the `prek.toml` files and the workflows in step.
