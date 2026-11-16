@@ -61,7 +61,8 @@ the maintainer's value.
 ## Priority 3: authorization, user data, and schema
 
 Applies to `core/internal/api/**`, `migrations/**`, and any file that builds or
-runs SQL. The rules are in `AGENTS.md`, Data rules. Report each of these as a
+runs SQL. The rules are in `core/AGENTS.md`, Data rules, and `AGENTS.md`,
+Migrations. Report each of these as a
 blocking finding:
 
 - **No auth.** A route other than `/healthz` that is not behind the Auth0
@@ -99,7 +100,7 @@ the link target string. Report each of these as a blocking finding:
 The fix is always the same: move the content to the sibling `AGENTS.md` and
 replace `CLAUDE.md` with a relative link to it.
 
-## Priority 5: standing rules from `AGENTS.md`
+## Priority 5: standing rules from `core/AGENTS.md` and `AGENTS.md`
 
 Flag these when they appear in the diff. Name the rule section in the comment.
 
