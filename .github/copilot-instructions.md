@@ -28,7 +28,37 @@ comment:
 2. State that the rule requires maintainer approval.
 3. Propose the code change that removes the need for the suppression.
 
-## Priority 2: authorization, user data, and schema
+## Priority 2: the maintainer's own accounts and identifiers
+
+This repository is public, and other people set it up against their own
+accounts. Flag every added or changed line that contains a value belonging to
+the maintainer's own accounts or infrastructure. Report each as a blocking
+finding. There is no exception for a fallback, a default, an example, a test
+fixture, or a comment.
+
+Values to find in the diff:
+
+- An Auth0 tenant name or domain (`<name>.auth0.com`, `<name>.<region>.auth0.com`), a
+  client ID, an API identifier (audience), or a connection or organization ID.
+- An email address, or a personal name used as a value.
+- A domain or hostname the maintainer owns, in a URL, a callback, an origin,
+  or a default.
+- A cloud account, project, tenant, or subscription ID, a registry or bucket
+  name, a host name, or an IP address.
+
+Not a finding:
+
+- The module path and repository URL, `github.com/schmitthub/blackbox`.
+- The copyright line in `LICENSE`.
+- Reserved placeholders: `example.com`, `example.org`, `*.example`,
+  `localhost`, `127.0.0.1`.
+
+The rule is in `AGENTS.md`, Rules. The fix is always the same: read the value
+from configuration and make it required, or use a reserved placeholder in
+examples and tests. A missing value is an error, never a silent fallback to
+the maintainer's value.
+
+## Priority 3: authorization, user data, and schema
 
 Applies to `internal/api/**`, `migrations/**`, and any file that builds or
 runs SQL. The rules are in `AGENTS.md`, Data rules. Report each of these as a
@@ -51,7 +81,7 @@ blocking finding:
 - **Crash path.** `panic` anywhere, or `log.Fatal` or `os.Exit` outside
   `cmd/api/main.go`.
 
-## Priority 3: `CLAUDE.md` files
+## Priority 4: `CLAUDE.md` files
 
 Every `CLAUDE.md` in this repository is a symbolic link to the file
 `AGENTS.md` in the same directory.
@@ -69,7 +99,7 @@ the link target string. Report each of these as a blocking finding:
 The fix is always the same: move the content to the sibling `AGENTS.md` and
 replace `CLAUDE.md` with a relative link to it.
 
-## Priority 4: standing rules from `AGENTS.md`
+## Priority 5: standing rules from `AGENTS.md`
 
 Flag these when they appear in the diff. Name the rule section in the comment.
 
