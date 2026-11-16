@@ -21,4 +21,4 @@ curl localhost:8080/healthz
 
 Tools come from `mise install`.
 
-Postgres, goose migrations (`migrations/`), then the Go API (`core/cmd/api`).
+Postgres, goose migrations (`core/migrations/`), then the Go API (`core/cmd/api`).

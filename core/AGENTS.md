@@ -8,6 +8,7 @@ The Go module of the Blackbox monolith (`github.com/schmitthub/blackbox/core`): 
 - `internal/config/`: configuration from the environment.
 - `internal/api/`: HTTP routes and handlers.
 - `internal/server/`: HTTP server lifecycle.
+- `migrations/`: goose migrations.
 - `scripts/`: test helpers, run from the repository root.
 
 ## Commands
@@ -27,6 +28,13 @@ These targets are in `core/Makefile`. The root `Makefile` forwards to them, so t
 - Queries use placeholders. Never build SQL from request data.
 - `events` is append-only. No `UPDATE` or `DELETE` on it.
 - Inputs and outputs relate only through events and time. Nothing stores that an input causes an output.
+
+## Migrations
+
+- A schema change is a new goose migration with `Up` and `Down`. Never edit a migration that is on `main`.
+- All times are stored in UTC, in `timestamptz` columns.
+- A new attribute starts in `attrs` (jsonb). It earns a column, through a migration, when it is queried on regularly.
+- Migrations are tested by running them, never from Go code: `make test-migrations` (`scripts/test-migrations.sh`) is a mock migration: it runs the real goose command line on an embedded PostgreSQL, without containers, all the way up, down and up again, and fails on any error.
 
 ## Rules
 

@@ -24,7 +24,7 @@ services:
       GOOSE_DBSTRING: postgres://blackbox:${POSTGRES_PASSWORD}@postgres:5432/blackbox?sslmode=disable
       GOOSE_MIGRATION_DIR: /migrations
     volumes:
-      - ../migrations:/migrations:ro
+      - ../core/migrations:/migrations:ro
     depends_on:
       postgres:
         condition: service_healthy

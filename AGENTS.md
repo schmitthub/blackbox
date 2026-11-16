@@ -19,8 +19,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 
 ## Layout
 
-- `core/`: the Go module of the monolith: the API and everything it is built from. Its instructions are in `core/AGENTS.md`.
-- `migrations/`: goose migrations.
+- `core/`: the Go module of the monolith: the API, its migrations and everything it is built from. Its instructions are in `core/AGENTS.md`.
 - `deploy/`: Compose files and one subdirectory per service.
 - `scripts/`: repository setup and checks.
 
@@ -32,13 +31,6 @@ Run every command and script from the repository root; scripts use paths relativ
 - `scripts/setup.sh [--env] [--auth0]`: sets up a checkout; no flag runs every part. A new part is a flag there, is safe to run again, and takes its settings from `.env`. A new setting gets a line in `.env.example`.
 - `make check`: every commit hook on all files.
 - `make up`, `make down`, `make reset`: the Compose stack. `make reset` deletes the database volume.
-
-## Migrations
-
-- A schema change is a new goose migration with `Up` and `Down`. Never edit a migration that is on `main`.
-- All times are stored in UTC, in `timestamptz` columns.
-- A new attribute starts in `attrs` (jsonb). It earns a column, through a migration, when it is queried on regularly.
-- Migrations are tested by running them, never from Go code: `make test-migrations` (`core/scripts/test-migrations.sh`) is a mock migration: it runs the real goose command line on an embedded PostgreSQL, without containers, all the way up, down and up again, and fails on any error.
 
 ## Rules
 

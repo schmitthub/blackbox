@@ -60,9 +60,9 @@ the maintainer's value.
 
 ## Priority 3: authorization, user data, and schema
 
-Applies to `core/internal/api/**`, `migrations/**`, and any file that builds or
-runs SQL. The rules are in `core/AGENTS.md`, Data rules, and `AGENTS.md`,
-Migrations. Report each of these as a
+Applies to `core/internal/api/**`, `core/migrations/**`, and any file that builds or
+runs SQL. The rules are in `core/AGENTS.md`, Data rules and Migrations.
+Report each of these as a
 blocking finding:
 
 - **No auth.** A route other than `/healthz` that is not behind the Auth0
