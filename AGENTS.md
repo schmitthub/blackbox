@@ -37,6 +37,7 @@ Run every command and script from the repository root; scripts use paths relativ
 - Do not add a lint suppression (`//nolint`, `#nosec`, `//lint:ignore`, `nosemgrep`, or an exclusion in `.golangci.yml`) without explicit maintainer approval. Correct the code so the linter passes.
 - Never commit a value from the maintainer's own accounts: an Auth0 tenant, domain, client ID or audience, an email address, a personal domain, a cloud account ID. Not as a fallback, default, example or test fixture. Read it from configuration and require it; examples use `example.com`. The module path `github.com/schmitthub/blackbox` and the `LICENSE` copyright line are the only exceptions.
 - Pin every dependency, container image, GitHub Action and hook to an exact version with a digest or commit SHA.
+- Command-line tools are pinned in `mise.toml`, with checksums in `mise.lock`. After changing `mise.toml`, run `mise lock` and commit both. CI installs them with `jdx/mise-action`; never write a tool version into a workflow or a script.
 - Every commit goes through the prek hooks. The `git-checks` guard blocks `--no-verify` and the other ways around them.
 - Commits must be signed. `main` only takes squash merges from pull requests.
 - Keep scanner versions in `prek.toml` and `.github/workflows/ci.yml` in step.

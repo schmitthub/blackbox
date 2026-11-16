@@ -88,15 +88,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      # Installs the tools pinned in mise.toml and mise.lock: Go and mockery.
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          go-version-file: core/go.mod
+          version: 2026.11.8
 
-      # Same version as mise.toml and the mockery hook in prek.toml.
       - name: Mocks up to date
-        working-directory: core
         run: |
-          go run github.com/vektra/mockery/v3@v3.9.1
+          make mocks
           git diff --exit-code
 
       - run: make test
@@ -125,8 +124,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Installs the tools pinned in mise.toml: goose and embedded-postgres.
+      # Installs the tools pinned in mise.toml and mise.lock: goose and embedded-postgres.
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.8
 
       - run: make test-migrations
 

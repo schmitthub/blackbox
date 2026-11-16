@@ -89,7 +89,7 @@ priority = "scan"
 [[repos.hooks]]
 id = "mockery"
 name = "Mocks up to date"
-# Expected version: 3.9.1 (mise.toml; must match the CI step in ci.yml).
+# mockery is pinned in mise.toml; CI installs the same one with mise-action.
 # Regenerates the mocks; prek fails the commit when a file changes.
 entry = "make mocks"
 language = "system"
