@@ -24,7 +24,7 @@ priority = "scan"
 # Vulnerability (Go call analysis) and license allowlist gate.
 [[repos]]
 repo = "https://github.com/google/osv-scanner"
-rev = "bfe2f84abd2f09fe0b83ba7f6dad40d296762f40" # frozen: v2.7.0
+rev = "02f96a40691c2d155fdda799af436e111231e365" # frozen: v2.7.1
 
 [[repos.hooks]]
 id = "osv-scanner"
