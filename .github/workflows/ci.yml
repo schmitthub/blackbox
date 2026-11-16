@@ -96,9 +96,12 @@ jobs:
 
   # One caller job per project. Each project has its own workflow file with
   # its build, lint, test and CodeQL jobs. To add a project: add its paths to
-  # .github/projects.yml, its two outputs to `plan`, a caller job here, and
-  # its name to `needs` of
-  # `passed`.
+  # .github/projects.yml, its two outputs to `plan`, and a caller job here.
+  #
+  # A caller job always runs, and its jobs skip themselves through the
+  # inputs: a skipped job reports its check as skipped, which satisfies a
+  # required check. A skipped caller would report no checks at all and leave
+  # them pending.
   #
   # A push to main is a merge of code that already passed, so it only scans:
   # pull request scans compare against the results on main.
@@ -244,20 +247,3 @@ jobs:
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:actions
-
-  # The one required status check. It passes when every job above passed or
-  # was skipped, so the ruleset never names a project's jobs and a skipped
-  # project cannot leave a required check pending.
-  passed:
-    name: CI passed
-    if: ${{ always() && github.event_name == 'pull_request' }}
-    needs: [plan, core, agent-compat, semgrep, gitleaks, dependency-review, codeql]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: Check every job
-        env:
-          RESULTS: ${{ toJSON(needs.*.result) }}
-        run: |
-          echo "$RESULTS"
-          jq -e 'all(. == "success" or . == "skipped")' <<<"$RESULTS"
