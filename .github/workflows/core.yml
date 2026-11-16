@@ -1,0 +1,82 @@
+name: core
+
+# Jobs for the Go module in core/. Called by ci.yml when a pull request
+# changes core/; never triggered on its own.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  # golangci-lint reports issues new since the merge base with main
+  # (new-from-merge-base in core/.golangci.yml).
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The checkout is a detached HEAD; the merge base needs a local main.
+      - name: Fetch main for new-from-merge-base
+        run: git fetch --no-tags origin main:main
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: core/go.mod
+
+      # Keep the version in lockstep with the golangci-lint hook in core/prek.toml.
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          working-directory: core
+          args: --config .golangci.yml
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Installs the tools pinned in every mise.toml and mise.lock of the monorepo.
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.8
+
+      - name: Mocks up to date
+        run: |
+          make -C core mocks
+          git diff --exit-code
+
+      - run: make -C core test
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: core/go.mod
+
+      - run: make -C core test-int
+
+  migrations:
+    name: Migration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Installs the tools pinned in every mise.toml and mise.lock of the monorepo.
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.8
+
+      - run: make -C core test-migrations

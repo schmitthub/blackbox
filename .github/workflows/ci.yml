@@ -1,5 +1,10 @@
 name: CI
 
+# The monorepo's one entry workflow. Repository-wide jobs (security scans,
+# agent files) are here and run on every pull request. Each project's jobs
+# are in its own workflow (core.yml), called from here when the pull request
+# changes that project.
+#
 # Stacked pull requests: GitHub triggers workflows as if every layer targets
 # the base of the stack, so `branches: [main]` runs this on every layer.
 # https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/optimizing-ci-for-stacked-pull-requests
@@ -17,26 +22,31 @@ permissions:
   contents: read
 
 jobs:
-  # A workflow runs once per layer of a stack, so the heavy jobs (lint, unit
-  # tests) run only on the two layers GitHub's guide
-  # names. The top layer (position == size) holds the full set of changes.
-  # The lowest unmerged layer (stack base == pull request base) is the next
-  # to land; when it merges, GitHub rebases the next layer onto the base,
-  # which re-triggers CI with that layer now the lowest. Cheap jobs run on
-  # every layer. `stack` is null outside a stack: everything runs.
+  # Decides what the per-project workflows run. Two outputs:
   #
-  # A skipped job counts as a passing required check. A layer can only merge
-  # together with every layer below it, and the layer being merged is either
-  # the top or was tested in full when it became the lowest.
+  # heavy: a workflow runs once per layer of a stack, so project jobs (lint,
+  # tests) run only on the two layers GitHub's guide names. The top layer
+  # (position == size) holds the full set of changes. The lowest unmerged
+  # layer (stack base == pull request base) is the next to land; when it
+  # merges, GitHub rebases the next layer onto the base, which re-triggers CI
+  # with that layer now the lowest. `stack` is null outside a stack.
+  #
+  # One output per project (core): whether the pull request changes it.
+  # Workflow-level `paths` filters are not used: a workflow skipped that way
+  # leaves required checks pending, while a skipped job counts as passing.
+  # https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks
   #
   # Dependents test `!= 'false'`, so an empty output (this job failing) runs everything.
-  stack:
-    name: Stack gate
+  plan:
+    name: Plan
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 2
+    permissions:
+      pull-requests: read
     outputs:
       heavy: ${{ steps.gate.outputs.heavy }}
+      core: ${{ steps.changes.outputs.core }}
     steps:
       - name: Apply stack gate
         id: gate
@@ -49,87 +59,27 @@ jobs:
             'if $s == null or $s.position == $s.size or $s.base.ref == $base then "heavy=true" else "heavy=false" end' \
             | tee -a "$GITHUB_OUTPUT"
 
-  # Everything except CodeQL runs on pull requests only; a push to main is a
-  # merge of code that already passed. CodeQL also runs on main: pull request
-  # scans compare against that analysis. golangci-lint reports issues new since
-  # the merge base with main (new-from-merge-base in core/.golangci.yml).
-  lint:
-    name: golangci-lint
-    needs: stack
-    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A project also counts as changed when a workflow changes.
+      - name: Changed projects
+        id: changes
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          fetch-depth: 0
+          filters: |
+            core:
+              - 'core/**'
+              - '.github/workflows/**'
 
-      # The checkout is a detached HEAD; the merge base needs a local main.
-      - name: Fetch main for new-from-merge-base
-        run: git fetch --no-tags origin main:main
+  # One caller job per project. Each project has its own workflow file with
+  # its build, lint and test jobs. To add a project: add its filter to `plan`,
+  # a caller job here, and its name to `needs` of `passed`.
+  core:
+    name: core
+    needs: plan
+    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.plan.outputs.heavy != 'false' && needs.plan.outputs.core != 'false' }}
+    uses: ./.github/workflows/core.yml
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: core/go.mod
-
-      # Keep the version in lockstep with the golangci-lint rev in prek.toml.
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: v2.15.0
-          working-directory: core
-          args: --config .golangci.yml
-
-  test:
-    name: Unit Tests
-    needs: stack
-    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # Installs the tools pinned in every mise.toml and mise.lock of the monorepo.
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
-        with:
-          version: 2026.11.8
-
-      - name: Mocks up to date
-        run: |
-          make -C core mocks
-          git diff --exit-code
-
-      - run: make -C core test
-
-  integration:
-    name: Integration Tests
-    needs: stack
-    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: core/go.mod
-
-      - run: make -C core test-int
-
-  migrations:
-    name: Migration Tests
-    needs: stack
-    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # Installs the tools pinned in every mise.toml and mise.lock of the monorepo.
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
-        with:
-          version: 2026.11.8
-
-      - run: make -C core test-migrations
+  # Repository-wide jobs. They run on pull requests only; a push to main is a
+  # merge of code that already passed.
 
   # The agent-file layout check the agent-compat commit hook runs, plus the
   # checker's own tests. Needs python3 >= 3.11 (tomllib); ubuntu-24.04 has 3.12.
@@ -232,8 +182,10 @@ jobs:
         with:
           config-file: ./.github/dependency-review-config.yml
 
-  # Not gated on stacked pull requests: a ruleset that requires code scanning
-  # results needs a CodeQL upload for every language on every layer.
+  # Repository-wide, and not gated on stacked pull requests or changed
+  # projects: a ruleset that requires code scanning results needs a CodeQL
+  # upload for every language on every layer. Add a project's language to
+  # the matrix. Also runs on main: pull request scans compare against it.
   codeql:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-24.04
@@ -263,3 +215,20 @@ jobs:
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:${{ matrix.language }}
+
+  # The one required status check. It passes when every job above passed or
+  # was skipped, so the ruleset never names a project's jobs and a skipped
+  # project cannot leave a required check pending.
+  passed:
+    name: CI passed
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: [plan, core, agent-compat, semgrep, gitleaks, dependency-review, codeql]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Check every job
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          jq -e 'all(. == "success" or . == "skipped")' <<<"$RESULTS"

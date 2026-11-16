@@ -41,4 +41,6 @@ Run every command and every script in `scripts/` from the repository root; they 
 - Commit hooks follow the same split: repository-wide hooks in the root `prek.toml`, a project's hooks in its own (`core/prek.toml`). prek finds both from the root.
 - Every commit goes through the prek hooks. The `git-checks` guard blocks `--no-verify` and the other ways around them.
 - Commits must be signed. `main` only takes squash merges from pull requests.
-- Keep scanner versions in `prek.toml` and `.github/workflows/ci.yml` in step.
+- CI follows the same split. `.github/workflows/ci.yml` is the entry workflow: it holds the repository-wide jobs and calls one workflow per project (`core.yml`) when the pull request changes that project. A project's jobs go in its own workflow, never in `ci.yml`. Never use a workflow-level `paths` filter: it leaves required checks pending.
+- `CI passed` is the only required status check. It needs every job in `ci.yml`; add a new job or project to its `needs`.
+- Keep scanner versions in the `prek.toml` files and the workflows in step.
