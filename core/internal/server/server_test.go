@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/schmitthub/blackbox/internal/server"
+	"github.com/schmitthub/blackbox/core/internal/server"
 )
 
 func TestRunStopsOnCancel(t *testing.T) {

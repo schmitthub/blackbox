@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/schmitthub/blackbox/internal/config"
+	"github.com/schmitthub/blackbox/core/internal/config"
 )
 
 func TestLoadDefaults(t *testing.T) {

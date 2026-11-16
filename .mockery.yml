@@ -6,6 +6,6 @@ pkgname: mocks
 filename: mocks.go
 structname: 'Mock{{.InterfaceName}}'
 packages:
-  github.com/schmitthub/blackbox/internal/api:
+  github.com/schmitthub/blackbox/core/internal/api:
     interfaces:
       Pinger:

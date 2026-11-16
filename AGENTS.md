@@ -19,10 +19,11 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 
 ## Layout
 
-- `cmd/api/`: the binary. It only wires config, the database pool, the router and the server.
-- `internal/config/`: configuration from the environment.
-- `internal/api/`: HTTP routes and handlers.
-- `internal/server/`: HTTP server lifecycle.
+- `core/`: all Go code of the monolith.
+- `core/cmd/api/`: the binary. It only wires config, the database pool, the router and the server.
+- `core/internal/config/`: configuration from the environment.
+- `core/internal/api/`: HTTP routes and handlers.
+- `core/internal/server/`: HTTP server lifecycle.
 - `migrations/`: goose migrations.
 - `deploy/`: Compose files and one subdirectory per service.
 
@@ -60,8 +61,8 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - Pass `context.Context` as the first argument. Never store it in a struct field.
 - Never commit a value from the maintainer's own accounts: an Auth0 tenant, domain, client ID or audience, an email address, a personal domain, a cloud account ID. Not as a fallback, default, example or test fixture. Read it from configuration and require it; examples use `example.com`. The module path `github.com/schmitthub/blackbox` and the `LICENSE` copyright line are the only exceptions.
 - Pin every dependency, container image, GitHub Action and hook to an exact version with a digest or commit SHA.
-- No `panic`. No `log.Fatal` or `os.Exit` outside `cmd/api/main.go`. Return the error up the call stack.
-- Only `internal/config` reads the environment. Only `internal/server` starts an HTTP server.
+- No `panic`. No `log.Fatal` or `os.Exit` outside `core/cmd/api/main.go`. Return the error up the call stack.
+- Only `core/internal/config` reads the environment. Only `core/internal/server` starts an HTTP server.
 - Every commit goes through the prek hooks. The `git-checks` guard blocks `--no-verify` and the other ways around them.
 - Commits must be signed. `main` only takes squash merges from pull requests.
 - Keep scanner versions in `prek.toml` and `.github/workflows/ci.yml` in step.

@@ -15,7 +15,7 @@ Report each hit as its own comment (priority 1).
 
 ## 2. Authorization, user data, and schema
 
-Search the diff under `internal/api/` and `migrations/`, and every file that
+Search the diff under `core/internal/api/` and `migrations/`, and every file that
 builds or runs SQL. For each hit:
 
 1. For each new route, confirm it is behind the Auth0 token validation, or
@@ -30,7 +30,7 @@ builds or runs SQL. For each hit:
 5. For each file under `migrations/`, confirm it is new, not an edit of a
    file on `main`, and that it has both `Up` and `Down`.
 6. Confirm there is no `panic`, and no `log.Fatal` or `os.Exit` outside
-   `cmd/api/main.go`.
+   `core/cmd/api/main.go`.
 
 Report each failed check as a blocking comment (priority 2).
 

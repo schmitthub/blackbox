@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/schmitthub/blackbox/internal/api"
-	"github.com/schmitthub/blackbox/internal/api/mocks"
+	"github.com/schmitthub/blackbox/core/internal/api"
+	"github.com/schmitthub/blackbox/core/internal/api/mocks"
 )
 
 func TestHealth(t *testing.T) {

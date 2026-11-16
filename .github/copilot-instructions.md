@@ -60,7 +60,7 @@ the maintainer's value.
 
 ## Priority 3: authorization, user data, and schema
 
-Applies to `internal/api/**`, `migrations/**`, and any file that builds or
+Applies to `core/internal/api/**`, `migrations/**`, and any file that builds or
 runs SQL. The rules are in `AGENTS.md`, Data rules. Report each of these as a
 blocking finding:
 
@@ -79,7 +79,7 @@ blocking finding:
 - **Edited migration.** A change to a migration file that is on `main`. A
   schema change is a new goose migration with `Up` and `Down`.
 - **Crash path.** `panic` anywhere, or `log.Fatal` or `os.Exit` outside
-  `cmd/api/main.go`.
+  `core/cmd/api/main.go`.
 
 ## Priority 4: `CLAUDE.md` files
 
@@ -116,10 +116,10 @@ Flag these when they appear in the diff. Name the rule section in the comment.
 - A `context.Context` stored in a struct field.
 - A dependency, container image, GitHub Action, or hook without an exact
   version and digest or commit SHA.
-- Logic in `cmd/api`. It only wires config, the database pool, the router,
+- Logic in `core/cmd/api`. It only wires config, the database pool, the router,
   and the server.
-- A read of the environment outside `internal/config`, or an HTTP server
-  started outside `internal/server`.
+- A read of the environment outside `core/internal/config`, or an HTTP server
+  started outside `core/internal/server`.
 
 ## Do not report
 

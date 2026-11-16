@@ -7,7 +7,7 @@ help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
 build: ## Build the API binary to bin/api
-	CGO_ENABLED=0 go build -o bin/api ./cmd/api
+	CGO_ENABLED=0 go build -o bin/api ./core/cmd/api
 
 test: ## Run unit tests
 	go test ./...
