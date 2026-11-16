@@ -38,7 +38,7 @@ Run every command and script from the repository root; scripts use paths relativ
 - A schema change is a new goose migration with `Up` and `Down`. Never edit a migration that is on `main`.
 - All times are stored in UTC, in `timestamptz` columns.
 - A new attribute starts in `attrs` (jsonb). It earns a column, through a migration, when it is queried on regularly.
-- Migrations are tested by running them, never from Go code: `make test-migrations` (`core/scripts/test-migrations.sh`) runs the real goose command line on an embedded PostgreSQL, without containers. Each migration goes up, down and up again, every `Down` leaves nothing behind, and no time column is without a time zone.
+- Migrations are tested by running them, never from Go code: `make test-migrations` (`core/scripts/test-migrations.sh`) is a mock migration: it runs the real goose command line on an embedded PostgreSQL, without containers, all the way up, down and up again, and fails on any error.
 
 ## Rules
 
