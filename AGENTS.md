@@ -29,7 +29,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 
 ## Commands
 
-- `make help` lists every target.
+- `make help` lists every target. Targets for the Go module live in `core/Makefile`; the root `Makefile` forwards to them and holds the repository-wide ones (Compose, hooks).
 - `scripts/setup.sh [--env] [--auth0]`: sets up a checkout. Run every script from the repository root; scripts use paths relative to it. Setup details: no flag runs every part. A new part is a flag there, is safe to run again, and takes its settings from `.env`. A new setting gets a line in `.env.example`.
 - `make test`, `make lint`: unit tests and golangci-lint.
 - `make test-int`: integration tests. Each starts an embedded PostgreSQL of its own; no container is needed.

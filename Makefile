@@ -1,28 +1,16 @@
 COMPOSE := docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.override.yaml
+CORE_TARGETS := build test test-int test-migrations mocks lint
 
 .DEFAULT_GOAL := help
-.PHONY: help build test test-int test-migrations mocks lint check image up down reset logs ps
+.PHONY: help check image up down reset logs ps $(CORE_TARGETS)
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
+	@$(MAKE) -s -C core help | grep -v "List targets"
 
-build: ## Build the API binary to bin/api
-	CGO_ENABLED=0 go -C core build -o ../bin/api ./cmd/api
-
-test: ## Run unit tests
-	go -C core test ./...
-
-test-int: ## Run integration tests, on an embedded PostgreSQL
-	go -C core test -tags=integration ./...
-
-test-migrations: ## Run the real migrations up, down and up on a throwaway database
-	core/scripts/test-migrations.sh
-
-mocks: ## Regenerate mocks from core/.mockery.yml
-	cd core && mockery
-
-lint: ## Run golangci-lint
-	cd core && golangci-lint run --config ../.golangci.yml
+# The Go module's targets live in core/Makefile.
+$(CORE_TARGETS):
+	@$(MAKE) -C core $@
 
 check: ## Run every prek hook on all files
 	prek run --all-files
