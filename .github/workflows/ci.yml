@@ -113,6 +113,20 @@ jobs:
 
       - run: make test-int
 
+  migrations:
+    name: Migration Tests
+    needs: stack
+    if: ${{ github.event_name == 'pull_request' && !cancelled() && needs.stack.outputs.heavy != 'false' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Creates .env from .env.example; the throwaway database needs no real secret.
+      - run: scripts/setup.sh --env
+
+      - run: make test-migrations
+
   # The agent-file layout check the agent-compat commit hook runs, plus the
   # checker's own tests. Needs python3 >= 3.11 (tomllib); ubuntu-24.04 has 3.12.
   agent-compat:

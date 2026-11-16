@@ -32,6 +32,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - `scripts/setup.sh [--env] [--auth0]`: sets up a checkout. Run every script from the repository root; scripts use paths relative to it. Setup details: no flag runs every part. A new part is a flag there, is safe to run again, and takes its settings from `.env`. A new setting gets a line in `.env.example`.
 - `make test`, `make lint`: unit tests and golangci-lint.
 - `make test-int`: integration tests. Each starts an embedded PostgreSQL of its own; no container is needed.
+- `make test-migrations`: runs the real migrations up, down and up on a throwaway database, in containers.
 - `make mocks`: regenerate the mocks listed in `.mockery.yml`. Add an interface there; never edit or hand-write a mock.
 - `make check`: every commit hook on all files.
 - `make up`, `make down`, `make reset`: the Compose stack. `make reset` deletes the database volume.
@@ -53,7 +54,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - A unit test replaces a dependency only with a mockery mock (`make mocks`). Never hand-write a fake, stub or spy.
 - A test that needs a database is an integration test: it carries `//go:build integration`, starts an embedded PostgreSQL, and runs with `make test-int`. `make test` needs no service and no network.
 - End-to-end tests run against the Compose stack in containers. Integration tests never use containers.
-- Every migration is covered by `migrations/migrations_integration_test.go`: each one goes up, down and up again, every `Down` leaves nothing behind, and no time column is without a time zone.
+- Migrations are tested by running them, never from Go code: `make test-migrations` (`scripts/test-migrations.sh`) runs the real goose image on a throwaway database. Each migration goes up, down and up again, every `Down` leaves nothing behind, and no time column is without a time zone.
 - Handle every error. Never assign one to `_`.
 - A meaningful string literal is a named constant.
 - Pass `context.Context` as the first argument. Never store it in a struct field.
