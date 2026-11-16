@@ -51,6 +51,7 @@ The `agent-compat` commit hook and the CI job `Agent compatibility` run `scripts
 - Handle every error. Never assign one to `_`.
 - A meaningful string literal is a named constant.
 - Pass `context.Context` as the first argument. Never store it in a struct field.
+- Never commit a value from the maintainer's own accounts: an Auth0 tenant, domain, client ID or audience, an email address, a personal domain, a cloud account ID. Not as a fallback, default, example or test fixture. Read it from configuration and require it; examples use `example.com`. The module path `github.com/schmitthub/blackbox` and the `LICENSE` copyright line are the only exceptions.
 - Pin every dependency, container image, GitHub Action and hook to an exact version with a digest or commit SHA.
 - No `panic`. No `log.Fatal` or `os.Exit` outside `cmd/api/main.go`. Return the error up the call stack.
 - Only `internal/config` reads the environment. Only `internal/server` starts an HTTP server.
