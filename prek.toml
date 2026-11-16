@@ -89,7 +89,7 @@ priority = "scan"
 [[repos.hooks]]
 id = "mockery"
 name = "Mocks up to date"
-# mockery is pinned in mise.toml; CI installs the same one with mise-action.
+# mockery is pinned in core/mise.toml; CI installs the same one with mise-action.
 # Regenerates the mocks; prek fails the commit when a file changes.
 entry = "make mocks"
 language = "system"

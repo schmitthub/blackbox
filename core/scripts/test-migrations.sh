@@ -4,14 +4,14 @@
 # the way down, and up again. Any error goose reports fails the run.
 # No container.
 #
-# Usage, from the repository root: core/scripts/test-migrations.sh
+# Usage: make test-migrations, or from core/: scripts/test-migrations.sh
 #
-# Needs goose and embedded-postgres, both pinned in mise.toml (`mise install`).
+# Needs goose and embedded-postgres, both pinned in core/mise.toml (`mise install`).
 
 set -euo pipefail
 
-if [[ ! -d core/migrations ]]; then
-	echo "run this from the repository root: core/scripts/test-migrations.sh" >&2
+if [[ ! -d migrations || ! -f go.mod ]]; then
+	echo "run this from core/: scripts/test-migrations.sh" >&2
 	exit 1
 fi
 
@@ -29,7 +29,7 @@ if [[ -z ${DATABASE_URL:-} ]]; then
 	exec embedded-postgres exec -- "$0"
 fi
 
-export GOOSE_DRIVER=postgres GOOSE_DBSTRING=$DATABASE_URL GOOSE_MIGRATION_DIR=core/migrations
+export GOOSE_DRIVER=postgres GOOSE_DBSTRING=$DATABASE_URL GOOSE_MIGRATION_DIR=migrations
 
 goose up
 goose down-to 0

@@ -1,0 +1,7 @@
+# Tools for the Go module.
+[tools]
+go = "1.27.4"
+mockery = "3.9.1"
+# scripts/test-migrations.sh. Keep goose in step with the image in deploy/compose.yaml.
+"aqua:pressly/goose" = "3.30.1"
+"github:fergusstrange/embedded-postgres" = "2.0.1"

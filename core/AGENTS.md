@@ -9,7 +9,8 @@ The Go module of the Blackbox monolith (`github.com/schmitthub/blackbox/core`): 
 - `internal/api/`: HTTP routes and handlers.
 - `internal/server/`: HTTP server lifecycle.
 - `migrations/`: goose migrations.
-- `scripts/`: test helpers, run from the repository root.
+- `scripts/`: test helpers, run from `core/` (the make targets do that).
+- `mise.toml`, `mise.lock`: the tools this module needs: Go, mockery, goose, embedded-postgres.
 
 ## Commands
 

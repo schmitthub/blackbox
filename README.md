@@ -19,6 +19,6 @@ curl localhost:8080/healthz
 - `--env`: creates `.env` from `.env.example`, or adds the keys the file lacks. It never changes a value that is already there.
 - `--auth0`: creates or updates the Auth0 API and the MCP client application from the `AUTH0_*` settings in `.env`. Run `auth0 login` first. It runs `--env` first, and writes the tenant domain and the client ID back to `.env`.
 
-Tools come from `mise install`.
+Tools come from `mise install --monorepo`.
 
 Postgres, goose migrations (`core/migrations/`), then the Go API (`core/cmd/api`).

@@ -17,7 +17,7 @@ test-int: ## Run integration tests, on an embedded PostgreSQL
 	go test -tags=integration ./...
 
 test-migrations: ## Run the real migrations up, down and up on an embedded PostgreSQL
-	cd .. && core/scripts/test-migrations.sh
+	scripts/test-migrations.sh
 
 mocks: ## Regenerate mocks from .mockery.yml
 	mockery
